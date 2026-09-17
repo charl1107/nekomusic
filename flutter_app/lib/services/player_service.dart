@@ -58,10 +58,12 @@ class PlayerService extends ChangeNotifier {
       _currentIndex = index;
     }
 
-    final url = ApiService.getStreamUrl(song.id);
-    await _player.setUrl(url);
+    final audioUrl = await ApiService.getAudioUrl(song.id);
+    if (audioUrl == null) return;
+    await _player.setUrl(audioUrl);
     await _player.play();
     StorageService.addRecentPlay(song);
+    StorageService.incrementPlayCount(song.id);
     notifyListeners();
   }
 
