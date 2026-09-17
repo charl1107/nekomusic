@@ -7,11 +7,15 @@ class StorageService {
   static late Box _settingsBox;
   static late Box _playlistsBox;
   static late Box _recentsBox;
+  static late Box _playCountsBox;
+  static late Box _downloadsBox;
 
   static Future<void> init() async {
     _settingsBox = await Hive.openBox('settings');
     _playlistsBox = await Hive.openBox('playlists');
     _recentsBox = await Hive.openBox('recents');
+    _playCountsBox = await Hive.openBox('playCounts');
+    _downloadsBox = await Hive.openBox('downloads');
   }
 
   static bool getDarkMode() => _settingsBox.get('darkMode', defaultValue: false);
@@ -62,4 +66,53 @@ class StorageService {
     final data = recents.map((s) => s.toJson()).toList();
     await _recentsBox.put('recents', json.encode(data));
   }
+
+  static int getPlayCount(String songId) =>
+      _playCountsBox.get(songId, defaultValue: 0);
+
+  static Future<void> incrementPlayCount(String songId) async {
+    final count = getPlayCount(songId);
+    await _playCountsBox.put(songId, count + 1);
+  }
+
+  static List<Song> getMostPlayed({int limit = 10}) {
+    final entries = _playCountsBox.toMap().entries.toList()
+      ..sort((a, b) => (b.value as int).compareTo(a.value as int));
+    final recentData = _recentsBox.get('recents', defaultValue: '[]');
+    final allSongs = (json.decode(recentData as String) as List)
+        .map((s) => Song.fromJson(s))
+        .toList();
+    final songMap = {for (var s in allSongs) s.id: s};
+    final result = <Song>[];
+    for (var entry in entries.take(limit)) {
+      if (songMap.containsKey(entry.key)) {
+        result.add(songMap[entry.key]!);
+      }
+    }
+    return result;
+  }
+
+  static List<Song> getDownloads() {
+    final data = _downloadsBox.get('downloads', defaultValue: '[]');
+    final list = json.decode(data as String) as List;
+    return list.map((s) => Song.fromJson(s)).toList();
+  }
+
+  static Future<void> addDownload(Song song) async {
+    final downloads = getDownloads();
+    if (downloads.any((s) => s.id == song.id)) return;
+    downloads.insert(0, song);
+    await _downloadsBox.put('downloads',
+        json.encode(downloads.map((s) => s.toJson()).toList()));
+  }
+
+  static Future<void> removeDownload(String songId) async {
+    final downloads = getDownloads();
+    downloads.removeWhere((s) => s.id == songId);
+    await _downloadsBox.put('downloads',
+        json.encode(downloads.map((s) => s.toJson()).toList()));
+  }
+
+  static bool isDownloaded(String songId) =>
+      getDownloads().any((s) => s.id == songId);
 }
