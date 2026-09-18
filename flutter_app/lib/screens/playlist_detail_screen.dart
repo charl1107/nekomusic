@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
 import '../services/player_service.dart';
-import '../services/download_service.dart';
 import '../widgets/song_card.dart';
 
 class PlaylistDetailScreen extends StatelessWidget {
@@ -12,7 +11,6 @@ class PlaylistDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final playerService = context.watch<PlayerService>();
-    final downloadService = context.watch<DownloadService>();
 
     return Scaffold(
       appBar: AppBar(
