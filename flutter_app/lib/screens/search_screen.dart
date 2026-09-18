@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
@@ -17,6 +18,28 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Song> _results = [];
   bool _isLoading = false;
   bool _hasSearched = false;
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() {
+        _results = [];
+        _hasSearched = false;
+      });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _search();
+    });
+  }
 
   Future<void> _search() async {
     final query = _controller.text.trim();
@@ -28,10 +51,12 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     final results = await ApiService.search(query);
-    setState(() {
-      _results = results;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _results = results;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -70,8 +95,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     .surfaceContainerHighest
                     .withOpacity(0.5),
               ),
-              onSubmitted: (_) => _search(),
-              onChanged: (value) => setState(() {}),
+              onChanged: _onSearchChanged,
             ),
           ),
           Expanded(

@@ -76,19 +76,37 @@ class StorageService {
   }
 
   static List<Song> getMostPlayed({int limit = 10}) {
-    final entries = _playCountsBox.toMap().entries.toList()
-      ..sort((a, b) => (b.value as int).compareTo(a.value as int));
     final recentData = _recentsBox.get('recents', defaultValue: '[]');
     final allSongs = (json.decode(recentData as String) as List)
         .map((s) => Song.fromJson(s))
         .toList();
     final songMap = {for (var s in allSongs) s.id: s};
+
+    // Get songs with play counts, sorted by count
+    final entries = _playCountsBox.toMap().entries.toList()
+      ..sort((a, b) => (b.value as int).compareTo(a.value as int));
+
     final result = <Song>[];
-    for (var entry in entries.take(limit)) {
+    final addedIds = <String>{};
+
+    // Add songs with play counts first
+    for (var entry in entries) {
+      if (result.length >= limit) break;
       if (songMap.containsKey(entry.key)) {
         result.add(songMap[entry.key]!);
+        addedIds.add(entry.key);
       }
     }
+
+    // Fill remaining with recent songs not yet added
+    for (var song in allSongs) {
+      if (result.length >= limit) break;
+      if (!addedIds.contains(song.id)) {
+        result.add(song);
+        addedIds.add(song.id);
+      }
+    }
+
     return result;
   }
 
