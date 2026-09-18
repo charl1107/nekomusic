@@ -25,14 +25,8 @@ class DownloadService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final audioUrl = await ApiService.getAudioUrl(song.id);
-      if (audioUrl == null) {
-        _states[song.id] = DownloadState.idle;
-        notifyListeners();
-        return;
-      }
-
-      await downloadFile(audioUrl, song);
+      final downloadUrl = ApiService.getDownloadUrl(song.id);
+      await downloadFile(downloadUrl, song);
 
       await StorageService.addDownload(song);
       _states[song.id] = DownloadState.downloaded;

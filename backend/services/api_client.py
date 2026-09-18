@@ -143,7 +143,13 @@ class YouTubeAPIClient:
         if not audio_url:
             return None
         try:
-            response = requests.get(audio_url, timeout=30, stream=True)
+            headers = {
+                "Referer": "https://www.youtube.com/",
+                "Origin": "https://www.youtube.com",
+            }
+            response = requests.get(
+                audio_url, headers=headers, timeout=30, stream=True
+            )
             response.raise_for_status()
             return response.content
         except requests.RequestException:
