@@ -36,4 +36,43 @@ class ApiService {
 
   static String getStreamUrl(String id) => '$baseUrl/stream/$id';
   static String getDownloadUrl(String id) => '$baseUrl/download/$id';
+
+  static Future<String?> getAudioUrl(String id) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/stream/$id'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['url'];
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  }
+
+  static Future<List<Song>> importYouTubePlaylist(String url) async {
+    final playlistId = _extractPlaylistId(url);
+    if (playlistId == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/playlist/$playlistId'),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return (data['results'] as List)
+            .map((json) => Song.fromJson(json))
+            .toList();
+      }
+    } catch (e) {
+      // ignore
+    }
+    return [];
+  }
+
+  static String? _extractPlaylistId(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+    return uri.queryParameters['list'];
+  }
 }
