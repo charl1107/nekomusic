@@ -1,12 +1,11 @@
+import 'dart:async';
 import 'dart:html' as html;
-import 'dart:js' as js;
 import '../models/song.dart';
 
-typedef void ProgressCallback(double progress);
+typedef ProgressCallback = void Function(double progress);
 
 Future<void> downloadFile(String url, Song song,
     {ProgressCallback? onProgress}) async {
-  // Use XMLHttpRequest for progress tracking, no popup
   final xhr = html.HttpRequest();
   xhr.open('GET', url, async: true);
   xhr.responseType = 'blob';
@@ -20,14 +19,6 @@ Future<void> downloadFile(String url, Song song,
   final completer = Completer<void>();
   xhr.onLoad.listen((_) {
     if (xhr.status == 200) {
-      // Store blob in memory via JS (no download popup)
-      js.context.callMethod('eval', ['''
-        (async () => {
-          const blob = xhr.response;
-          window._nekocMusicBlobs = window._nekocMusicBlobs || {};
-          window._nekocMusicBlobs["${song.id}"] = blob;
-        })()
-      ''']);
       completer.complete();
     } else {
       completer.completeError(Exception('Download failed: ${xhr.status}'));
@@ -42,4 +33,14 @@ Future<void> downloadFile(String url, Song song,
   return completer.future;
 }
 
-import 'dart:async';
+Future<String> saveToDevice(Song song) async {
+  // On web, trigger browser download
+  final url = 'http://localhost:5000/api/download/${song.id}';
+  final anchor = html.AnchorElement(href: url)
+    ..setAttribute('download', '${song.title}.mp3')
+    ..style.display = 'none';
+  html.document.body!.children.add(anchor);
+  anchor.click();
+  anchor.remove();
+  return 'Downloaded via browser';
+}

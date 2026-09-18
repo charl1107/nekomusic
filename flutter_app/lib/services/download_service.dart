@@ -49,6 +49,15 @@ class DownloadService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String?> saveToDevice(Song song) async {
+    try {
+      final path = await saveToDevice(song);
+      return path;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> removeDownload(String songId) async {
     await StorageService.removeDownload(songId);
     _states[songId] = DownloadState.idle;
