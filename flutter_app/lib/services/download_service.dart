@@ -51,7 +51,7 @@ class DownloadService extends ChangeNotifier {
 
   Future<String?> saveToDevice(Song song) async {
     try {
-      final path = await saveToDevice(song);
+      final path = await saveToDeviceFile(song);
       return path;
     } catch (e) {
       return null;

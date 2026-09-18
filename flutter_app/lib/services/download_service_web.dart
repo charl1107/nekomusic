@@ -33,7 +33,7 @@ Future<void> downloadFile(String url, Song song,
   return completer.future;
 }
 
-Future<String> saveToDevice(Song song) async {
+Future<String> saveToDeviceFile(Song song) async {
   // On web, trigger browser download
   final url = 'http://localhost:5000/api/download/${song.id}';
   final anchor = html.AnchorElement(href: url)

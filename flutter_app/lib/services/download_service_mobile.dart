@@ -27,7 +27,7 @@ Future<void> downloadFile(String url, Song song,
   );
 }
 
-Future<String> saveToDevice(Song song) async {
+Future<String> saveToDeviceFile(Song song) async {
   if (Platform.isAndroid) {
     final status = await Permission.storage.request();
     if (!status.isGranted) throw Exception('Storage permission denied');
