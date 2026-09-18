@@ -4,6 +4,8 @@ import '../models/song.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
 
+enum RepeatMode { off, all, one }
+
 class PlayerService extends ChangeNotifier {
   final AudioPlayer _player = AudioPlayer();
   List<Song> _queue = [];
@@ -12,14 +14,18 @@ class PlayerService extends ChangeNotifier {
   bool _autoplay = true;
   String _audioQuality = '320kbps';
   bool _isPlaying = false;
+  bool _shuffleMode = false;
+  RepeatMode _repeatMode = RepeatMode.off;
 
   AudioPlayer get player => _player;
-  List<Song> get queue => _queue;
+  List<Song> get queue => List.unmodifiable(_queue);
   int get currentIndex => _currentIndex;
   bool get isDarkMode => _isDarkMode;
   bool get autoplay => _autoplay;
   String get audioQuality => _audioQuality;
   bool get isPlaying => _isPlaying;
+  bool get shuffleMode => _shuffleMode;
+  RepeatMode get repeatMode => _repeatMode;
   Song? get currentSong =>
       _currentIndex >= 0 && _currentIndex < _queue.length
           ? _queue[_currentIndex]
@@ -76,10 +82,25 @@ class PlayerService extends ChangeNotifier {
   }
 
   Future<void> playNext() async {
-    if (_currentIndex < _queue.length - 1) {
-      _currentIndex++;
-      await play(_queue[_currentIndex]);
+    if (_queue.isEmpty) return;
+
+    if (_repeatMode == RepeatMode.one) {
+      await _player.seek(Duration.zero);
+      await _player.play();
+      return;
     }
+
+    _currentIndex++;
+    if (_currentIndex >= _queue.length) {
+      if (_repeatMode == RepeatMode.all) {
+        _currentIndex = 0;
+      } else {
+        await stop();
+        return;
+      }
+    }
+
+    await play(_queue[_currentIndex]);
   }
 
   Future<void> playPrevious() async {
@@ -122,6 +143,29 @@ class PlayerService extends ChangeNotifier {
   void setAudioQuality(String quality) {
     _audioQuality = quality;
     StorageService.setAudioQuality(quality);
+    notifyListeners();
+  }
+
+  void toggleShuffle() {
+    _shuffleMode = !_shuffleMode;
+    if (_shuffleMode) {
+      _queue.shuffle();
+    }
+    notifyListeners();
+  }
+
+  void cycleRepeat() {
+    switch (_repeatMode) {
+      case RepeatMode.off:
+        _repeatMode = RepeatMode.all;
+        break;
+      case RepeatMode.all:
+        _repeatMode = RepeatMode.one;
+        break;
+      case RepeatMode.one:
+        _repeatMode = RepeatMode.off;
+        break;
+    }
     notifyListeners();
   }
 
