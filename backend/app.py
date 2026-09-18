@@ -28,14 +28,16 @@ def get_song(song_id):
 
 @app.route("/api/stream/<song_id>", methods=["GET"])
 def stream(song_id):
-    audio_stream = api_client.get_audio_stream(song_id)
-    if not audio_stream:
+    audio_url = api_client.get_audio_url(song_id)
+    if not audio_url:
         return jsonify({"error": "Audio not available"}), 404
-    return Response(
-        audio_stream,
-        mimetype="audio/mpeg",
-        headers={"Content-Disposition": f"inline; filename={song_id}.mp3"},
-    )
+    return jsonify({"url": audio_url})
+
+
+@app.route("/api/playlist/<playlist_id>", methods=["GET"])
+def get_playlist(playlist_id):
+    results = api_client.get_playlist(playlist_id)
+    return jsonify(results)
 
 
 @app.route("/api/download/<song_id>", methods=["GET"])
