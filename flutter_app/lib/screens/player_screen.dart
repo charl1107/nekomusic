@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/download_service.dart';
 import '../services/player_service.dart';
 
 class PlayerScreen extends StatelessWidget {
@@ -25,121 +26,152 @@ class PlayerScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Spacer(),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: song.thumbnail != null
-                  ? Image.network(
-                      song.thumbnail!,
-                      width: 300,
-                      height: 300,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      width: 300,
-                      height: 300,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Theme.of(context).colorScheme.primary,
-                            Theme.of(context).colorScheme.secondary,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: song.thumbnail != null
+                    ? Image.network(
+                        song.thumbnail!,
+                        width: 280,
+                        height: 280,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: 280,
+                        height: 280,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Theme.of(context).colorScheme.primary,
+                              Theme.of(context).colorScheme.secondary,
+                            ],
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.music_note,
+                          size: 80,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                song.title,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Consumer<DownloadService>(
+                builder: (context, downloadService, _) {
+                  final state = downloadService.getState(song.id);
+                  return IconButton(
+                    icon: state == DownloadState.downloading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            state == DownloadState.downloaded
+                                ? Icons.download_done
+                                : Icons.download,
+                            color: state == DownloadState.downloaded
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
+                          ),
+                    onPressed: state == DownloadState.downloading
+                        ? null
+                        : () {
+                            if (state == DownloadState.downloaded) {
+                              downloadService.removeDownload(song.id);
+                            } else {
+                              downloadService.downloadSong(song);
+                            }
+                          },
+                  );
+                },
+              ),
+              Text(
+                song.artist,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              StreamBuilder<Duration>(
+                stream: playerService.positionStream,
+                builder: (context, snapshot) {
+                  final position = snapshot.data ?? Duration.zero;
+                  final duration = playerService.duration;
+                  return Column(
+                    children: [
+                      Slider(
+                        value: position.inSeconds.toDouble(),
+                        max: duration.inSeconds.toDouble().clamp(1, double.infinity),
+                        onChanged: (value) {
+                          playerService.seek(Duration(seconds: value.toInt()));
+                        },
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(_formatDuration(position)),
+                            Text(_formatDuration(duration)),
                           ],
                         ),
                       ),
-                      child: const Icon(
-                        Icons.music_note,
-                        size: 80,
-                        color: Colors.white,
-                      ),
-                    ),
-            ),
-            const Spacer(),
-            Text(
-              song.title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              song.artist,
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ],
+                  );
+                },
               ),
-            ),
-            const SizedBox(height: 24),
-            StreamBuilder<Duration>(
-              stream: playerService.positionStream,
-              builder: (context, snapshot) {
-                final position = snapshot.data ?? Duration.zero;
-                final duration = playerService.duration;
-                return Column(
-                  children: [
-                    Slider(
-                      value: position.inSeconds.toDouble(),
-                      max: duration.inSeconds.toDouble().clamp(1, double.infinity),
-                      onChanged: (value) {
-                        playerService.seek(Duration(seconds: value.toInt()));
-                      },
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shuffle),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.skip_previous, size: 36),
+                    onPressed: () => playerService.playPrevious(),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(_formatDuration(position)),
-                          Text(_formatDuration(duration)),
-                        ],
+                    child: IconButton(
+                      icon: Icon(
+                        playerService.isPlaying ? Icons.pause : Icons.play_arrow,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        size: 36,
                       ),
+                      onPressed: () => playerService.togglePlay(),
                     ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.shuffle),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_previous, size: 36),
-                  onPressed: () => playerService.playPrevious(),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    shape: BoxShape.circle,
                   ),
-                  child: IconButton(
-                    icon: Icon(
-                      playerService.isPlaying ? Icons.pause : Icons.play_arrow,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      size: 36,
-                    ),
-                    onPressed: () => playerService.togglePlay(),
+                  IconButton(
+                    icon: const Icon(Icons.skip_next, size: 36),
+                    onPressed: () => playerService.playNext(),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_next, size: 36),
-                  onPressed: () => playerService.playNext(),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.repeat),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
+                  IconButton(
+                    icon: const Icon(Icons.repeat),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
