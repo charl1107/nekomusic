@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/song.dart';
+import '../services/download_service.dart';
 
 class SongCard extends StatelessWidget {
   final Song song;
@@ -148,9 +150,34 @@ class SongCard extends StatelessWidget {
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
-              leading: const Icon(Icons.download),
+              leading: Consumer<DownloadService>(
+                builder: (context, downloadService, _) {
+                  final state = downloadService.getState(song.id);
+                  if (state == DownloadState.downloading) {
+                    return const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  }
+                  return Icon(
+                    state == DownloadState.downloaded
+                        ? Icons.download_done
+                        : Icons.download,
+                  );
+                },
+              ),
               title: const Text('Download'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                final downloadService = context.read<DownloadService>();
+                final state = downloadService.getState(song.id);
+                if (state == DownloadState.downloaded) {
+                  downloadService.removeDownload(song.id);
+                } else {
+                  downloadService.downloadSong(song);
+                }
+                Navigator.pop(context);
+              },
             ),
             ListTile(
               leading: const Icon(Icons.share),
