@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/playlist.dart';
-import '../models/song.dart';
+import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import 'playlist_detail_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -87,11 +88,78 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
+  Future<void> _importFromYouTube() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import from YouTube'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Paste YouTube playlist URL',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final songs = await ApiService.importYouTubePlaylist(result);
+      if (songs.isNotEmpty && mounted) {
+        final nameController = TextEditingController(text: 'Imported Playlist');
+        final name = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Playlist Name'),
+            content: TextField(controller: nameController),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, nameController.text),
+                child: const Text('Create'),
+              ),
+            ],
+          ),
+        );
+
+        if (name != null && name.isNotEmpty) {
+          final playlist = Playlist(
+            id: const Uuid().v4(),
+            name: name,
+            songs: songs,
+          );
+          await StorageService.addPlaylist(playlist);
+          _loadPlaylists();
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Library'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.link),
+            onPressed: _importFromYouTube,
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createPlaylist,
@@ -147,7 +215,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         }
                       },
                     ),
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PlaylistDetailScreen(playlist: playlist),
+                        ),
+                      );
+                    },
                   ),
                 );
               },
