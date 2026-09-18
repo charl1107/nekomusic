@@ -22,7 +22,7 @@ class PlayerScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert),
-            onPressed: () {},
+            onPressed: () => _showOptions(context, song),
           ),
         ],
       ),
@@ -188,6 +188,62 @@ class PlayerScreen extends StatelessWidget {
               const SizedBox(height: 24),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showOptions(BuildContext context, song) {
+    final downloadService = context.read<DownloadService>();
+    final state = downloadService.getState(song.id);
+    final isDownloaded = state == DownloadState.downloaded;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.playlist_add),
+              title: const Text('Add to playlist'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: Icon(isDownloaded ? Icons.download_done : Icons.download),
+              title: Text(isDownloaded ? 'Remove download' : 'Download'),
+              onTap: () {
+                if (isDownloaded) {
+                  downloadService.removeDownload(song.id);
+                } else {
+                  downloadService.downloadSong(song);
+                }
+                Navigator.pop(context);
+              },
+            ),
+            if (isDownloaded)
+              ListTile(
+                leading: const Icon(Icons.phone_android),
+                title: const Text('Save to device'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final path = await downloadService.saveToDevice(song);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(path != null ? 'Saved to Downloads' : 'Failed to save'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: const Text('Share'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
         ),
       ),
     );
