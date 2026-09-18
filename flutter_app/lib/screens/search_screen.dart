@@ -36,7 +36,7 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    _debounce = Timer(const Duration(milliseconds: 300), () {
       _search();
     });
   }
