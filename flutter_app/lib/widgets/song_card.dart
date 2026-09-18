@@ -153,11 +153,27 @@ class SongCard extends StatelessWidget {
               leading: Consumer<DownloadService>(
                 builder: (context, downloadService, _) {
                   final state = downloadService.getState(song.id);
+                  final progress = downloadService.getProgress(song.id);
                   if (state == DownloadState.downloading) {
-                    return const SizedBox(
+                    return SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CircularProgressIndicator(
+                            strokeWidth: 2,
+                            value: progress,
+                            backgroundColor: Colors.grey[300],
+                          ),
+                          Center(
+                            child: Text(
+                              '${(progress * 100).toInt()}%',
+                              style: const TextStyle(fontSize: 8),
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   }
                   return Icon(

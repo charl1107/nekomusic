@@ -2,22 +2,44 @@ import 'dart:html' as html;
 import 'dart:js' as js;
 import '../models/song.dart';
 
-Future<void> downloadFile(String url, Song song) async {
-  final filename = '${song.title}.mp3';
+typedef void ProgressCallback(double progress);
 
-  // Use JS fetch to download as blob, then trigger save dialog
-  await js.context.callMethod('eval', ['''
-    (async () => {
-      const response = await fetch("$url");
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = "$filename";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    })()
-  ''']);
+Future<void> downloadFile(String url, Song song,
+    {ProgressCallback? onProgress}) async {
+  // Use XMLHttpRequest for progress tracking, no popup
+  final xhr = html.HttpRequest();
+  xhr.open('GET', url, async: true);
+  xhr.responseType = 'blob';
+
+  xhr.onProgress.listen((e) {
+    if (e.lengthComputable && onProgress != null) {
+      onProgress(e.loaded / e.total);
+    }
+  });
+
+  final completer = Completer<void>();
+  xhr.onLoad.listen((_) {
+    if (xhr.status == 200) {
+      // Store blob in memory via JS (no download popup)
+      js.context.callMethod('eval', ['''
+        (async () => {
+          const blob = xhr.response;
+          window._nekocMusicBlobs = window._nekocMusicBlobs || {};
+          window._nekocMusicBlobs["${song.id}"] = blob;
+        })()
+      ''']);
+      completer.complete();
+    } else {
+      completer.completeError(Exception('Download failed: ${xhr.status}'));
+    }
+  });
+
+  xhr.onError.listen((_) {
+    completer.completeError(Exception('Download failed'));
+  });
+
+  xhr.send();
+  return completer.future;
 }
+
+import 'dart:async';

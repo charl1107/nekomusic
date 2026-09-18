@@ -42,15 +42,33 @@ def get_playlist(playlist_id):
 
 @app.route("/api/download/<song_id>", methods=["GET"])
 def download(song_id):
-    audio_data = api_client.get_audio_stream(song_id)
-    if not audio_data:
+    audio_url = api_client.get_audio_url(song_id)
+    if not audio_url:
         return jsonify({"error": "Audio not available"}), 404
-    return send_file(
-        io.BytesIO(audio_data),
-        mimetype="audio/mpeg",
-        as_attachment=True,
-        download_name=f"{song_id}.mp3",
-    )
+
+    import requests as req
+    headers = {
+        "Referer": "https://www.youtube.com/",
+        "Origin": "https://www.youtube.com",
+    }
+    upstream = req.get(audio_url, headers=headers, timeout=30, stream=True)
+    upstream.raise_for_status()
+
+    content_length = upstream.headers.get("Content-Length")
+
+    def generate():
+        for chunk in upstream.iter_content(chunk_size=8192):
+            if chunk:
+                yield chunk
+
+    resp_headers = {
+        "Content-Type": "audio/mpeg",
+        "Content-Disposition": f'inline; filename="{song_id}.mp3"',
+    }
+    if content_length:
+        resp_headers["Content-Length"] = content_length
+
+    return Response(generate(), headers=resp_headers)
 
 
 @app.route("/api/health", methods=["GET"])
