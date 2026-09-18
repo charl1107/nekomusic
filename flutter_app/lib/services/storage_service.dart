@@ -9,6 +9,7 @@ class StorageService {
   static late Box _recentsBox;
   static late Box _playCountsBox;
   static late Box _downloadsBox;
+  static late Box _searchesBox;
 
   static Future<void> init() async {
     _settingsBox = await Hive.openBox('settings');
@@ -16,6 +17,7 @@ class StorageService {
     _recentsBox = await Hive.openBox('recents');
     _playCountsBox = await Hive.openBox('playCounts');
     _downloadsBox = await Hive.openBox('downloads');
+    _searchesBox = await Hive.openBox('searches');
   }
 
   static bool getDarkMode() => _settingsBox.get('darkMode', defaultValue: false);
@@ -133,4 +135,28 @@ class StorageService {
 
   static bool isDownloaded(String songId) =>
       getDownloads().any((s) => s.id == songId);
+
+  static List<String> getRecentSearches() {
+    final data = _searchesBox.get('searches', defaultValue: '[]');
+    return List<String>.from(json.decode(data as String));
+  }
+
+  static Future<void> addRecentSearch(String query) async {
+    if (query.trim().isEmpty) return;
+    final searches = getRecentSearches();
+    searches.remove(query);
+    searches.insert(0, query);
+    if (searches.length > 20) searches.removeLast();
+    await _searchesBox.put('searches', json.encode(searches));
+  }
+
+  static Future<void> removeRecentSearch(String query) async {
+    final searches = getRecentSearches();
+    searches.remove(query);
+    await _searchesBox.put('searches', json.encode(searches));
+  }
+
+  static Future<void> clearRecentSearches() async {
+    await _searchesBox.put('searches', json.encode([]));
+  }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/player_service.dart';
+import '../services/storage_service.dart';
 import '../models/song.dart';
 import '../widgets/song_card.dart';
 
@@ -15,15 +16,30 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   List<Song> _results = [];
   bool _isLoading = false;
   bool _hasSearched = false;
   Timer? _debounce;
+  List<String> _recentSearches = [];
+  List<Song> _suggestedSongs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSuggestions();
+  }
+
+  void _loadSuggestions() {
+    _recentSearches = StorageService.getRecentSearches();
+    _suggestedSongs = StorageService.getMostPlayed(limit: 5);
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -36,7 +52,7 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 300), () {
+    _debounce = Timer(const Duration(milliseconds: 200), () {
       _search();
     });
   }
@@ -44,6 +60,9 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _search() async {
     final query = _controller.text.trim();
     if (query.isEmpty) return;
+
+    StorageService.addRecentSearch(query);
+    _recentSearches = StorageService.getRecentSearches();
 
     setState(() {
       _isLoading = true;
@@ -59,9 +78,23 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  void _tapRecentSearch(String query) {
+    _controller.text = query;
+    _focusNode.unfocus();
+    _search();
+  }
+
+  void _removeRecentSearch(String query) async {
+    await StorageService.removeRecentSearch(query);
+    setState(() {
+      _recentSearches.remove(query);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final playerService = context.watch<PlayerService>();
+    final showSuggestions = !_hasSearched && !_isLoading;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Search')),
@@ -71,6 +104,7 @@ class _SearchScreenState extends State<SearchScreen> {
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _controller,
+              focusNode: _focusNode,
               decoration: InputDecoration(
                 hintText: 'Search songs, artists...',
                 prefixIcon: const Icon(Icons.search),
@@ -101,36 +135,108 @@ class _SearchScreenState extends State<SearchScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _results.isEmpty
-                    ? Center(
-                        child: _hasSearched
-                            ? const Text(
-                                'No results found.',
-                                style: TextStyle(color: Colors.grey),
-                              )
-                            : const Text(
-                                'Search for your favorite music.',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _results.length,
-                        itemBuilder: (context, index) {
-                          return SongCard(
-                            song: _results[index],
-                            onTap: () {
-                              playerService.playList(
-                                _results,
-                                startIndex: index,
+                : showSuggestions
+                    ? _buildSuggestions(context, playerService)
+                    : _results.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No results found.',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _results.length,
+                            itemBuilder: (context, index) {
+                              return SongCard(
+                                song: _results[index],
+                                onTap: () {
+                                  playerService.playList(
+                                    _results,
+                                    startIndex: index,
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
-                      ),
+                          ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSuggestions(BuildContext context, PlayerService playerService) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        if (_recentSearches.isNotEmpty) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Recent searches',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await StorageService.clearRecentSearches();
+                  setState(() {
+                    _recentSearches = [];
+                  });
+                },
+                child: const Text('Clear all'),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _recentSearches.map((query) {
+              return Chip(
+                label: Text(query),
+                deleteIcon: const Icon(Icons.close, size: 18),
+                onDeleted: () => _removeRecentSearch(query),
+                onPressed: () => _tapRecentSearch(query),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+        ],
+        if (_suggestedSongs.isNotEmpty) ...[
+          const Text(
+            'Suggested',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...(_suggestedSongs.asMap().entries.map((entry) {
+            return SongCard(
+              song: entry.value,
+              onTap: () {
+                playerService.playList(
+                  _suggestedSongs,
+                  startIndex: entry.key,
+                );
+              },
+            );
+          })),
+        ],
+        if (_recentSearches.isEmpty && _suggestedSongs.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.only(top: 64),
+              child: Text(
+                'Search for your favorite music.',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
