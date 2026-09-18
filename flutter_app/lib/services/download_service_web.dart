@@ -11,8 +11,8 @@ Future<void> downloadFile(String url, Song song,
   xhr.responseType = 'blob';
 
   xhr.onProgress.listen((e) {
-    if (e.lengthComputable && onProgress != null) {
-      onProgress(e.loaded / e.total);
+    if (e.lengthComputable && e.total != null && e.total! > 0 && onProgress != null) {
+      onProgress(e.loaded! / e.total!);
     }
   });
 
