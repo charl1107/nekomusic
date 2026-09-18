@@ -6,6 +6,7 @@ import '../models/song.dart';
 import '../widgets/song_card.dart';
 import 'search_screen.dart';
 import 'library_screen.dart';
+import 'downloads_screen.dart';
 import 'settings_screen.dart';
 import 'player_screen.dart';
 
@@ -45,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildHomeContent(playerService),
           const SearchScreen(),
           const LibraryScreen(),
+          const DownloadsScreen(),
           const SettingsScreen(),
         ],
       ),
@@ -73,6 +75,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icon(Icons.library_music_outlined),
                 selectedIcon: Icon(Icons.library_music),
                 label: 'Library',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.download_outlined),
+                selectedIcon: Icon(Icons.download),
+                label: 'Downloads',
               ),
               NavigationDestination(
                 icon: Icon(Icons.settings_outlined),
