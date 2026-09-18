@@ -19,6 +19,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   List<Song> _recentPlays = [];
+  List<Song> _mostPlayed = [];
 
   @override
   void initState() {
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadRecents() {
     setState(() {
       _recentPlays = StorageService.getRecentPlays();
+      _mostPlayed = StorageService.getMostPlayed(limit: 10);
     });
   }
 
@@ -140,6 +142,55 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               playerService.playList(
                                 _recentPlays,
+                                startIndex: index,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Most Played',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                if (_mostPlayed.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text(
+                        'No plays yet.\nStart listening to see your top songs!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 200,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _mostPlayed.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: SongCard(
+                            song: _mostPlayed[index],
+                            isCompact: true,
+                            onTap: () {
+                              playerService.playList(
+                                _mostPlayed,
                                 startIndex: index,
                               );
                             },
