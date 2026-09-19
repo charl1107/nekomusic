@@ -103,14 +103,14 @@ class _HomeScreenState extends State<HomeScreen> {
       slivers: [
         // Hero header
         SliverAppBar(
-          expandedHeight: 180,
+          expandedHeight: 120,
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
             title: const Text(
               'NekoMusic',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 24,
+                fontSize: 20,
                 color: Colors.white,
               ),
             ),
@@ -128,13 +128,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Stack(
                 children: [
-                  // Decorative circles
                   Positioned(
-                    top: -30,
-                    right: -30,
+                    top: -20,
+                    right: -20,
                     child: Container(
-                      width: 120,
-                      height: 120,
+                      width: 80,
+                      height: 80,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white.withValues(alpha: 0.1),
@@ -142,23 +141,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Positioned(
-                    bottom: -20,
-                    left: -20,
+                    bottom: -10,
+                    left: -10,
                     child: Container(
-                      width: 80,
-                      height: 80,
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white.withValues(alpha: 0.08),
                       ),
-                    ),
-                  ),
-                  // Music note icon
-                  Center(
-                    child: Icon(
-                      Icons.music_note_rounded,
-                      size: 100,
-                      color: Colors.white.withValues(alpha: 0.15),
                     ),
                   ),
                 ],

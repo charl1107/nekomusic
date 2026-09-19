@@ -1,7 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
-import '../services/download_service.dart';
 import '../services/player_service.dart';
 import '../theme/app_colors.dart';
 import 'queue_screen.dart';
@@ -359,10 +358,6 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   void _showOptions(BuildContext context, song) {
     final playerService = context.read<PlayerService>();
-    final downloadService = context.read<DownloadService>();
-    final state = downloadService.getState(song.id);
-    final isDownloaded = state == DownloadState.downloaded;
-    final isDownloading = state == DownloadState.downloading;
 
     showModalBottomSheet(
       context: context,
@@ -375,56 +370,6 @@ class _PlayerScreenState extends State<PlayerScreen>
               title: const Text('Add to playlist'),
               onTap: () => Navigator.pop(context),
             ),
-            if (isDownloading)
-              ListTile(
-                leading: const Icon(Icons.cancel, color: AppColors.warning),
-                title: const Text('Cancel download', style: TextStyle(color: AppColors.warning)),
-                onTap: () {
-                  Navigator.pop(context);
-                  downloadService.cancelDownload(song.id);
-                },
-              )
-            else
-              ListTile(
-                leading: Icon(isDownloaded ? Icons.download_done : Icons.download),
-                title: Text(isDownloaded ? 'Remove download' : 'Download'),
-                onTap: () {
-                  if (isDownloaded) {
-                    downloadService.removeDownload(song.id);
-                  } else {
-                    downloadService.downloadSong(song);
-                    Future.delayed(const Duration(milliseconds: 100), () {
-                      if (context.mounted && downloadService.errorMessage != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(downloadService.errorMessage!),
-                            duration: const Duration(seconds: 3),
-                          ),
-                        );
-                        downloadService.clearError();
-                      }
-                    });
-                  }
-                  Navigator.pop(context);
-                },
-              ),
-            if (isDownloaded)
-              ListTile(
-                leading: const Icon(Icons.phone_android),
-                title: const Text('Save to device'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final path = await downloadService.saveToDevice(song);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(path != null ? 'Saved to Downloads' : 'Failed to save'),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-              ),
             ListTile(
               leading: Icon(
                 playerService.isFavorite(song.id) ? Icons.favorite : Icons.favorite_border,
