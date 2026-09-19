@@ -66,27 +66,49 @@ class PlayerService extends ChangeNotifier {
       _currentIndex = index;
     }
 
-    // Check for local file first (offline playback) - mobile only
+    // Mobile: try local file first (offline playback)
     if (!kIsWeb) {
       final localPath = await getLocalPath(song.id);
       if (localPath != null) {
-        await _player.setFilePath(localPath);
-        await _player.play();
-        StorageService.addRecentPlay(song);
-        StorageService.incrementPlayCount(song.id);
-        notifyListeners();
-        return;
+        try {
+          await _player.setFilePath(localPath);
+          await _player.play();
+          StorageService.addRecentPlay(song);
+          StorageService.incrementPlayCount(song.id);
+          notifyListeners();
+          return;
+        } catch (e) {
+          // Local file failed, try streaming as fallback
+        }
       }
     }
 
     // Stream from server
-    final audioUrl = await ApiService.getAudioUrl(song.id);
-    if (audioUrl == null) return;
-    await _player.setUrl(audioUrl);
-    await _player.play();
-    StorageService.addRecentPlay(song);
-    StorageService.incrementPlayCount(song.id);
-    notifyListeners();
+    try {
+      final audioUrl = await ApiService.getAudioUrl(song.id);
+      if (audioUrl == null) return;
+      await _player.setUrl(audioUrl);
+      await _player.play();
+      StorageService.addRecentPlay(song);
+      StorageService.incrementPlayCount(song.id);
+      notifyListeners();
+    } catch (e) {
+      // Server failed - try local file as fallback (mobile only)
+      if (!kIsWeb) {
+        final localPath = await getLocalPath(song.id);
+        if (localPath != null) {
+          try {
+            await _player.setFilePath(localPath);
+            await _player.play();
+            StorageService.addRecentPlay(song);
+            StorageService.incrementPlayCount(song.id);
+            notifyListeners();
+          } catch (e2) {
+            // Both server and local failed
+          }
+        }
+      }
+    }
   }
 
   Future<void> playList(List<Song> songs, {int startIndex = 0}) async {
