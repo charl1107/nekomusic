@@ -97,8 +97,9 @@ class PlayerScreen extends StatelessWidget {
                 builder: (context, downloadService, _) {
                   final state = downloadService.getState(song.id);
                   final progress = downloadService.getProgress(song.id);
+                  final isDownloading = state == DownloadState.downloading;
                   return IconButton(
-                    icon: state == DownloadState.downloading
+                    icon: isDownloading
                         ? SizedBox(
                             width: 24,
                             height: 24,
@@ -127,8 +128,10 @@ class PlayerScreen extends StatelessWidget {
                                 ? Theme.of(context).colorScheme.primary
                                 : null,
                           ),
-                    onPressed: state == DownloadState.downloading
-                        ? null
+                    onPressed: isDownloading
+                        ? () {
+                            downloadService.cancelDownload(song.id);
+                          }
                         : () {
                             if (state == DownloadState.downloaded) {
                               downloadService.removeDownload(song.id);
@@ -247,6 +250,7 @@ class PlayerScreen extends StatelessWidget {
     final downloadService = context.read<DownloadService>();
     final state = downloadService.getState(song.id);
     final isDownloaded = state == DownloadState.downloaded;
+    final isDownloading = state == DownloadState.downloading;
 
     showModalBottomSheet(
       context: context,
@@ -259,29 +263,39 @@ class PlayerScreen extends StatelessWidget {
               title: const Text('Add to playlist'),
               onTap: () => Navigator.pop(context),
             ),
-            ListTile(
-              leading: Icon(isDownloaded ? Icons.download_done : Icons.download),
-              title: Text(isDownloaded ? 'Remove download' : 'Download'),
-              onTap: () {
-                if (isDownloaded) {
-                  downloadService.removeDownload(song.id);
-                } else {
-                  downloadService.downloadSong(song);
-                  Future.delayed(const Duration(milliseconds: 100), () {
-                    if (context.mounted && downloadService.errorMessage != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(downloadService.errorMessage!),
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                      downloadService.clearError();
-                    }
-                  });
-                }
-                Navigator.pop(context);
-              },
-            ),
+            if (isDownloading)
+              ListTile(
+                leading: const Icon(Icons.cancel, color: Colors.orange),
+                title: const Text('Cancel download', style: TextStyle(color: Colors.orange)),
+                onTap: () {
+                  Navigator.pop(context);
+                  downloadService.cancelDownload(song.id);
+                },
+              )
+            else
+              ListTile(
+                leading: Icon(isDownloaded ? Icons.download_done : Icons.download),
+                title: Text(isDownloaded ? 'Remove download' : 'Download'),
+                onTap: () {
+                  if (isDownloaded) {
+                    downloadService.removeDownload(song.id);
+                  } else {
+                    downloadService.downloadSong(song);
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      if (context.mounted && downloadService.errorMessage != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(downloadService.errorMessage!),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        downloadService.clearError();
+                      }
+                    });
+                  }
+                  Navigator.pop(context);
+                },
+              ),
             if (isDownloaded)
               ListTile(
                 leading: const Icon(Icons.phone_android),

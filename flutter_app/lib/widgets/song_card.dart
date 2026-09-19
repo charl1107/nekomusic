@@ -182,7 +182,9 @@ class SongCard extends StatelessWidget {
   }
 
   void _showOptions(BuildContext context) {
-    final isDownloaded = context.read<DownloadService>().getState(song.id) == DownloadState.downloaded;
+    final downloadService = context.read<DownloadService>();
+    final isDownloaded = downloadService.getState(song.id) == DownloadState.downloaded;
+    final isDownloading = downloadService.isDownloading(song.id);
 
     showModalBottomSheet(
       context: context,
@@ -195,70 +197,78 @@ class SongCard extends StatelessWidget {
               title: const Text('Add to playlist'),
               onTap: () => Navigator.pop(context),
             ),
-            ListTile(
-              leading: Consumer<DownloadService>(
-                builder: (context, downloadService, _) {
-                  final state = downloadService.getState(song.id);
-                  final progress = downloadService.getProgress(song.id);
-                  if (state == DownloadState.downloading) {
-                    return SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CircularProgressIndicator(
-                            strokeWidth: 2,
-                            value: progress,
-                            backgroundColor: Colors.grey[300],
-                          ),
-                          Center(
-                            child: Text(
-                              '${(progress * 100).toInt()}%',
-                              style: const TextStyle(fontSize: 8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  return Icon(
-                    state == DownloadState.downloaded
-                        ? Icons.download_done
-                        : Icons.download,
-                  );
+            if (isDownloading)
+              ListTile(
+                leading: const Icon(Icons.cancel, color: Colors.orange),
+                title: const Text('Cancel download', style: TextStyle(color: Colors.orange)),
+                onTap: () {
+                  Navigator.pop(context);
+                  downloadService.cancelDownload(song.id);
                 },
-              ),
-              title: const Text('Download'),
-              onTap: () {
-                final downloadService = context.read<DownloadService>();
-                final state = downloadService.getState(song.id);
-                if (state == DownloadState.downloaded) {
-                  downloadService.removeDownload(song.id);
-                } else {
-                  downloadService.downloadSong(song);
-                  Future.delayed(const Duration(milliseconds: 100), () {
-                    if (context.mounted && downloadService.errorMessage != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(downloadService.errorMessage!),
-                          duration: const Duration(seconds: 3),
+              )
+            else
+              ListTile(
+                leading: Consumer<DownloadService>(
+                  builder: (context, downloadService, _) {
+                    final state = downloadService.getState(song.id);
+                    final progress = downloadService.getProgress(song.id);
+                    if (state == DownloadState.downloading) {
+                      return SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CircularProgressIndicator(
+                              strokeWidth: 2,
+                              value: progress,
+                              backgroundColor: Colors.grey[300],
+                            ),
+                            Center(
+                              child: Text(
+                                '${(progress * 100).toInt()}%',
+                                style: const TextStyle(fontSize: 8),
+                              ),
+                            ),
+                          ],
                         ),
                       );
-                      downloadService.clearError();
                     }
-                  });
-                }
-                Navigator.pop(context);
-              },
-            ),
+                    return Icon(
+                      state == DownloadState.downloaded
+                          ? Icons.download_done
+                          : Icons.download,
+                    );
+                  },
+                ),
+                title: const Text('Download'),
+                onTap: () {
+                  final state = downloadService.getState(song.id);
+                  if (state == DownloadState.downloaded) {
+                    downloadService.removeDownload(song.id);
+                  } else {
+                    downloadService.downloadSong(song);
+                    Future.delayed(const Duration(milliseconds: 100), () {
+                      if (context.mounted && downloadService.errorMessage != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(downloadService.errorMessage!),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        downloadService.clearError();
+                      }
+                    });
+                  }
+                  Navigator.pop(context);
+                },
+              ),
             if (isDownloaded)
               ListTile(
                 leading: const Icon(Icons.phone_android),
                 title: const Text('Save to device'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final downloadService = context.read<DownloadService>();
                   final path = await downloadService.saveToDevice(song);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(

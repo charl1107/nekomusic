@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../models/song.dart';
 import '../services/storage_service.dart';
 import '../services/player_service.dart';
-import '../services/download_service.dart';
 import '../widgets/song_card.dart';
 
 class DownloadsScreen extends StatefulWidget {
@@ -28,59 +27,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     });
   }
 
-  void _showOptions(Song song) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.play_arrow),
-              title: const Text('Play'),
-              onTap: () {
-                Navigator.pop(context);
-                final playerService = context.read<PlayerService>();
-                playerService.playList(_downloads, startIndex: _downloads.indexOf(song));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.phone_android),
-              title: const Text('Save to device'),
-              onTap: () async {
-                Navigator.pop(context);
-                final downloadService = context.read<DownloadService>();
-                final path = await downloadService.saveToDevice(song);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(path != null ? 'Saved to Downloads' : 'Failed to save'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Remove', style: TextStyle(color: Colors.red)),
-              onTap: () async {
-                Navigator.pop(context);
-                final downloadService = context.read<DownloadService>();
-                await downloadService.removeDownload(song.id);
-                _loadDownloads();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final playerService = context.watch<PlayerService>();
-    final downloadService = context.watch<DownloadService>();
     _downloads = StorageService.getDownloads();
     return Scaffold(
       appBar: AppBar(title: const Text('Downloads')),

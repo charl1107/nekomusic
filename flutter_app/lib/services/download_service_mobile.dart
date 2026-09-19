@@ -7,7 +7,7 @@ import '../models/song.dart';
 typedef ProgressCallback = void Function(double progress);
 
 Future<void> downloadFile(String url, Song song,
-    {ProgressCallback? onProgress}) async {
+    {ProgressCallback? onProgress, CancelToken? cancelToken}) async {
   if (Platform.isAndroid) {
     final status = await Permission.storage.request();
     if (!status.isGranted) {
@@ -21,6 +21,7 @@ Future<void> downloadFile(String url, Song song,
   await dio.download(
     url,
     filePath,
+    cancelToken: cancelToken,
     onReceiveProgress: (received, total) {
       if (total > 0 && onProgress != null) {
         onProgress(received / total);
@@ -66,7 +67,8 @@ Future<String> saveToDeviceFile(Song song) async {
     destDir = await getApplicationDocumentsDirectory();
   }
 
-  final destPath = '${destDir.path}/${song.title}.mp3';
+  final sanitizedTitle = song.title.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+  final destPath = '${destDir.path}/$sanitizedTitle.mp3';
   await sourceFile.copy(destPath);
   return destPath;
 }

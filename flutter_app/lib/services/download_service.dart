@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/song.dart';
 import '../services/api_service.dart';
@@ -7,14 +8,12 @@ import 'download_service_helper.dart'
     if (dart.library.html) 'download_service_web.dart'
     if (dart.library.io) 'download_service_mobile.dart';
 
-// Web: triggers browser download (no local cache)
-// Mobile/Desktop: downloads to app documents directory
-
 enum DownloadState { idle, downloading, downloaded }
 
 class DownloadService extends ChangeNotifier {
   final Map<String, DownloadState> _states = {};
   final Map<String, double> _progress = {};
+  final Map<String, CancelToken> _cancelTokens = {};
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
@@ -26,6 +25,9 @@ class DownloadService extends ChangeNotifier {
 
   double getProgress(String songId) => _progress[songId] ?? 0.0;
 
+  bool isDownloading(String songId) =>
+      _states[songId] == DownloadState.downloading;
+
   Future<void> downloadSong(Song song) async {
     if (getState(song.id) == DownloadState.downloading) return;
 
@@ -34,33 +36,62 @@ class DownloadService extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    try {
-      final downloadUrl = ApiService.getDownloadUrl(song.id);
-      await downloadFile(
-        downloadUrl,
-        song,
-        onProgress: (p) {
-          _progress[song.id] = p;
-          notifyListeners();
-        },
-      );
+    final cancelToken = CancelToken();
+    _cancelTokens[song.id] = cancelToken;
 
-      await StorageService.addDownload(song);
+    try {
+      final audioUrl = await ApiService.getAudioUrl(song.id);
+      if (audioUrl == null) {
+        _errorMessage = 'Failed to get audio URL';
+        _states[song.id] = DownloadState.idle;
+        _progress[song.id] = 0.0;
+        notifyListeners();
+        return;
+      }
+
+      await downloadFile(audioUrl, song, onProgress: (p) {
+        _progress[song.id] = p;
+        notifyListeners();
+      }, cancelToken: cancelToken);
+
       _states[song.id] = DownloadState.downloaded;
       _progress[song.id] = 1.0;
+      await StorageService.addDownload(song);
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
+        _errorMessage = 'Download cancelled';
+      } else {
+        _errorMessage = 'Download failed: ${e.toString()}';
+      }
+      _states[song.id] = DownloadState.idle;
+      _progress[song.id] = 0.0;
     } catch (e) {
       _states[song.id] = DownloadState.idle;
       _progress[song.id] = 0.0;
       _errorMessage = 'Download failed: ${e.toString()}';
+    } finally {
+      _cancelTokens.remove(song.id);
     }
+    notifyListeners();
+  }
+
+  Future<void> cancelDownload(String songId) async {
+    if (_cancelTokens.containsKey(songId)) {
+      _cancelTokens[songId]!.cancel('User cancelled');
+      _cancelTokens.remove(songId);
+    }
+    _states[songId] = DownloadState.idle;
+    _progress.remove(songId);
+    _errorMessage = 'Download cancelled';
     notifyListeners();
   }
 
   Future<String?> saveToDevice(Song song) async {
     try {
-      final path = await saveToDeviceFile(song);
-      return path;
+      return await saveToDeviceFile(song);
     } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
       return null;
     }
   }
@@ -68,8 +99,8 @@ class DownloadService extends ChangeNotifier {
   Future<void> removeDownload(String songId) async {
     await deleteFile(songId);
     await StorageService.removeDownload(songId);
-    _states[songId] = DownloadState.idle;
-    _progress[songId] = 0.0;
+    _states.remove(songId);
+    _progress.remove(songId);
     notifyListeners();
   }
 
