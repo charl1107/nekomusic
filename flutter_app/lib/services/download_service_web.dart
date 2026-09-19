@@ -16,3 +16,7 @@ Future<void> downloadFile(String url, Song song,
 Future<String> saveToDeviceFile(Song song) async {
   throw Exception('Save to device not supported on web');
 }
+
+Future<void> deleteFile(String songId) async {
+  // On web, no local file to delete - browser handles downloads
+}
