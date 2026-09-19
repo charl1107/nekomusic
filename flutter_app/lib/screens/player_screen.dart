@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
 import '../services/download_service.dart';
 import '../services/player_service.dart';
@@ -164,8 +164,13 @@ class PlayerScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.shuffle),
-                    onPressed: () {},
+                    icon: Icon(
+                      Icons.shuffle,
+                      color: playerService.shuffleMode
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    onPressed: () => playerService.toggleShuffle(),
                   ),
                   IconButton(
                     icon: const Icon(Icons.skip_previous, size: 36),
@@ -190,8 +195,15 @@ class PlayerScreen extends StatelessWidget {
                     onPressed: () => playerService.playNext(),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.repeat),
-                    onPressed: () {},
+                    icon: Icon(
+                      playerService.repeatMode == RepeatMode.one
+                          ? Icons.repeat_one
+                          : Icons.repeat,
+                      color: playerService.repeatMode != RepeatMode.off
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    onPressed: () => playerService.cycleRepeat(),
                   ),
                 ],
               ),
@@ -204,6 +216,7 @@ class PlayerScreen extends StatelessWidget {
   }
 
   void _showOptions(BuildContext context, song) {
+    final playerService = context.read<PlayerService>();
     final downloadService = context.read<DownloadService>();
     final state = downloadService.getState(song.id);
     final isDownloaded = state == DownloadState.downloaded;
@@ -248,6 +261,19 @@ class PlayerScreen extends StatelessWidget {
                   }
                 },
               ),
+            ListTile(
+              leading: Icon(
+                playerService.isFavorite(song.id) ? Icons.favorite : Icons.favorite_border,
+                color: playerService.isFavorite(song.id) ? Colors.red : null,
+              ),
+              title: Text(
+                playerService.isFavorite(song.id) ? 'Remove from favorites' : 'Add to favorites',
+              ),
+              onTap: () {
+                playerService.toggleFavorite(song);
+                Navigator.pop(context);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.share),
               title: const Text('Share'),
