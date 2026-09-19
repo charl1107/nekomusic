@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/song.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
@@ -64,9 +66,18 @@ class PlayerService extends ChangeNotifier {
       _currentIndex = index;
     }
 
-    final audioUrl = await ApiService.getAudioUrl(song.id);
-    if (audioUrl == null) return;
-    await _player.setUrl(audioUrl);
+    // Check for local file first (offline playback)
+    final localPath = await getLocalPath(song.id);
+    if (localPath != null) {
+      // Play from local file
+      await _player.setFilePath(localPath);
+    } else {
+      // Stream from server
+      final audioUrl = await ApiService.getAudioUrl(song.id);
+      if (audioUrl == null) return;
+      await _player.setUrl(audioUrl);
+    }
+    
     await _player.play();
     StorageService.addRecentPlay(song);
     StorageService.incrementPlayCount(song.id);
@@ -178,6 +189,34 @@ class PlayerService extends ChangeNotifier {
       StorageService.addFavorite(song);
     }
     notifyListeners();
+  }
+
+  /// Check if a song has a local file (downloaded)
+  Future<bool> hasLocalFile(String songId) async {
+    if (kIsWeb) return false; // Web doesn't have local files
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$songId.mp3');
+      return await file.exists();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get local file path for a downloaded song
+  Future<String?> getLocalPath(String songId) async {
+    if (kIsWeb) return null;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final filePath = '${dir.path}/$songId.mp3';
+      final file = File(filePath);
+      if (await file.exists()) {
+        return filePath;
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    return null;
   }
 
   @override
