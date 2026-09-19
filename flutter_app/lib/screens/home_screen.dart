@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   List<Song> _recentPlays = [];
   List<Song> _mostPlayed = [];
+  List<Song> _favorites = [];
 
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _recentPlays = StorageService.getRecentPlays();
       _mostPlayed = StorageService.getMostPlayed(limit: 10);
+      _favorites = StorageService.getFavorites();
     });
   }
 
@@ -210,6 +212,44 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+        if (_favorites.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Favorites',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 200,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _favorites.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: SongCard(
+                            song: _favorites[index],
+                            isCompact: true,
+                            onTap: () {
+                              playerService.playList(
+                                _favorites,
+                                startIndex: index,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
