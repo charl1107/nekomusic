@@ -8,7 +8,7 @@ import 'search_screen.dart';
 import 'library_screen.dart';
 import 'downloads_screen.dart';
 import 'settings_screen.dart';
-import 'player_screen.dart';
+import '../widgets/mini_player.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (playerService.currentSong != null) _buildMiniPlayer(playerService),
+          if (playerService.currentSong != null) const MiniPlayer(),
           NavigationBar(
             selectedIndex: _currentIndex,
             onDestinationSelected: (index) {
@@ -254,88 +254,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMiniPlayer(PlayerService playerService) {
-    final song = playerService.currentSong!;
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const PlayerScreen()),
-        );
-      },
-      child: Container(
-        height: 64,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(8),
-              ),
-              child: song.thumbnail != null
-                  ? Image.network(
-                      song.thumbnail!,
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      width: 56,
-                      height: 56,
-                      color: Theme.of(context).colorScheme.primary,
-                      child: const Icon(Icons.music_note, color: Colors.white),
-                    ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    song.title,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    song.artist,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.skip_previous),
-              onPressed: () => playerService.playPrevious(),
-            ),
-            IconButton(
-              icon: Icon(
-                playerService.isPlaying ? Icons.pause : Icons.play_arrow,
-              ),
-              onPressed: () => playerService.togglePlay(),
-            ),
-            IconButton(
-              icon: const Icon(Icons.skip_next),
-              onPressed: () => playerService.playNext(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
