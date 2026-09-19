@@ -69,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
                 selectedIcon: Icon(Icons.home),
-                label: 'Home',
+                label: 'Capu Tune',
               ),
               NavigationDestination(
                 icon: Icon(Icons.search),
@@ -101,17 +101,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeContent(PlayerService playerService) {
     return CustomScrollView(
       slivers: [
-        // Hero header
-        SliverAppBar(
-          expandedHeight: 120,
-          pinned: true,
-          flexibleSpace: FlexibleSpaceBar(
-            title: const Text(
-              'NekoMusic',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: Colors.white,
+// Hero header
+          SliverAppBar(
+            expandedHeight: 120,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              title: const Text(
+                'Capu Tune',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: Colors.white,
+                ),
               ),
             ),
             background: Container(
