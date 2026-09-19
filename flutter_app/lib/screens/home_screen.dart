@@ -101,59 +101,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeContent(PlayerService playerService) {
     return CustomScrollView(
       slivers: [
-// Hero header
-          SliverAppBar(
-            expandedHeight: 120,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text(
-                'Capu Tune',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            background: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF6C63FF),
-                    Color(0xFF9C27B0),
-                    Color(0xFFE91E63),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: -20,
-                    right: -20,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.1),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -10,
-                    left: -10,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                    ),
-                  ),
-                ],
+        // Hero header
+        SliverAppBar(
+          expandedHeight: 120,
+          pinned: true,
+          flexibleSpace: FlexibleSpaceBar(
+            title: const Text(
+              'Capu Tune',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.white,
               ),
             ),
           ),
