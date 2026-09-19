@@ -10,6 +10,7 @@ class StorageService {
   static late Box _playCountsBox;
   static late Box _downloadsBox;
   static late Box _searchesBox;
+  static late Box _favoritesBox;
 
   static Future<void> init() async {
     _settingsBox = await Hive.openBox('settings');
@@ -18,6 +19,7 @@ class StorageService {
     _playCountsBox = await Hive.openBox('playCounts');
     _downloadsBox = await Hive.openBox('downloads');
     _searchesBox = await Hive.openBox('searches');
+    _favoritesBox = await Hive.openBox('favorites');
   }
 
   static bool getDarkMode() => _settingsBox.get('darkMode', defaultValue: false);
@@ -159,4 +161,28 @@ class StorageService {
   static Future<void> clearRecentSearches() async {
     await _searchesBox.put('searches', json.encode([]));
   }
+
+  static List<Song> getFavorites() {
+    final data = _favoritesBox.get('favorites', defaultValue: '[]');
+    final list = json.decode(data as String) as List;
+    return list.map((s) => Song.fromJson(s)).toList();
+  }
+
+  static Future<void> addFavorite(Song song) async {
+    final favorites = getFavorites();
+    if (favorites.any((s) => s.id == song.id)) return;
+    favorites.insert(0, song);
+    await _favoritesBox.put('favorites',
+        json.encode(favorites.map((s) => s.toJson()).toList()));
+  }
+
+  static Future<void> removeFavorite(String songId) async {
+    final favorites = getFavorites();
+    favorites.removeWhere((s) => s.id == songId);
+    await _favoritesBox.put('favorites',
+        json.encode(favorites.map((s) => s.toJson()).toList()));
+  }
+
+  static bool isFavorite(String songId) =>
+      getFavorites().any((s) => s.id == songId);
 }
