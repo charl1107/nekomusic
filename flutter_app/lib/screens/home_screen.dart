@@ -4,6 +4,7 @@ import '../services/player_service.dart';
 import '../services/storage_service.dart';
 import '../models/song.dart';
 import '../widgets/song_card.dart';
+import '../theme/app_colors.dart';
 import 'search_screen.dart';
 import 'library_screen.dart';
 import 'downloads_screen.dart';
@@ -62,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() => _currentIndex = index);
               if (index == 0) _loadRecents();
             },
+            height: 72,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
@@ -98,12 +101,37 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeContent(PlayerService playerService) {
     return CustomScrollView(
       slivers: [
+        // Hero header
         SliverAppBar(
-          expandedHeight: 120,
+          expandedHeight: 160,
           pinned: true,
-          title: const Text(
-            'NekoMusic',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          flexibleSpace: FlexibleSpaceBar(
+            title: const Text(
+              'NekoMusic',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+              ),
+            ),
+            background: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.music_note,
+                  size: 80,
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
           ),
           actions: [
             IconButton(
@@ -114,144 +142,109 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+        // Recently Played section
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Recently Played',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                if (_recentPlays.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Text(
-                        'No recent plays yet.\nStart listening to see your history!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  )
-                else
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _recentPlays.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: SongCard(
-                            song: _recentPlays[index],
-                            isCompact: true,
-                            onTap: () {
-                              playerService.playList(
-                                _recentPlays,
-                                startIndex: index,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
+          child: _buildSection(
+            title: 'Recently Played',
+            songs: _recentPlays,
+            emptyMessage: 'No recent plays yet.\nStart listening to see your history!',
+            playerService: playerService,
           ),
         ),
+        // Most Played section
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Most Played',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                if (_mostPlayed.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Text(
-                        'No plays yet.\nStart listening to see your top songs!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  )
-                else
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _mostPlayed.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: SongCard(
-                            song: _mostPlayed[index],
-                            isCompact: true,
-                            onTap: () {
-                              playerService.playList(
-                                _mostPlayed,
-                                startIndex: index,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
+          child: _buildSection(
+            title: 'Most Played',
+            songs: _mostPlayed,
+            emptyMessage: 'No plays yet.\nStart listening to see your top songs!',
+            playerService: playerService,
           ),
         ),
+        // Favorites section
         if (_favorites.isNotEmpty)
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Favorites',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _favorites.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: SongCard(
-                            song: _favorites[index],
-                            isCompact: true,
-                            onTap: () {
-                              playerService.playList(
-                                _favorites,
-                                startIndex: index,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+            child: _buildSection(
+              title: 'Favorites',
+              songs: _favorites,
+              emptyMessage: '',
+              playerService: playerService,
             ),
           ),
       ],
     );
   }
 
+  Widget _buildSection({
+    required String title,
+    required List<Song> songs,
+    required String emptyMessage,
+    required PlayerService playerService,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(AppColors.spacingL),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (songs.isNotEmpty)
+                TextButton(
+                  onPressed: () {},
+                  child: const Text('See all'),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppColors.spacingM),
+          if (songs.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(AppColors.spacingXL),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(AppColors.radiusL),
+              ),
+              child: Center(
+                child: Text(
+                  emptyMessage,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: songs.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: AppColors.spacingM),
+                    child: SongCard(
+                      song: songs[index],
+                      isCompact: true,
+                      onTap: () {
+                        playerService.playList(
+                          songs,
+                          startIndex: index,
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

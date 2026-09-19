@@ -8,6 +8,7 @@ import '../services/storage_service.dart';
 import '../services/player_service.dart';
 import '../services/api_service.dart';
 import '../widgets/song_card.dart';
+import '../theme/app_colors.dart';
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -26,7 +27,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     super.initState();
     _loadDownloads();
     _loadActiveDownloads();
-    // Poll for active downloads every 2 seconds
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       _loadActiveDownloads();
     });
@@ -61,7 +61,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         }
       }
     } catch (e) {
-      // Ignore errors - will retry on next tick
+      // Ignore errors
     }
   }
 
@@ -69,18 +69,35 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   Widget build(BuildContext context) {
     final playerService = context.watch<PlayerService>();
     _downloads = StorageService.getDownloads();
-    
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Downloads'),
+        title: const Text(
+          'Downloads',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           if (_activeDownloads.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: AppColors.spacingM),
               child: Center(
-                child: Text(
-                  '${_activeDownloads.length} downloading',
-                  style: const TextStyle(fontSize: 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppColors.spacingS,
+                    vertical: AppColors.spacingXS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppColors.radiusFull),
+                  ),
+                  child: Text(
+                    '${_activeDownloads.length} active',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -88,18 +105,54 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       ),
       body: Column(
         children: [
-          // Active downloads section
           if (_activeDownloads.isNotEmpty) ...[
             Container(
-              padding: const EdgeInsets.all(16),
-              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              padding: const EdgeInsets.all(AppColors.spacingM),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                  ],
+                ),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+                  ),
+                ),
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.cloud_download, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Downloading ${_activeDownloads.length} song(s) to server...',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  Container(
+                    padding: const EdgeInsets.all(AppColors.spacingS),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppColors.radiusS),
+                    ),
+                    child: Icon(
+                      Icons.cloud_download_rounded,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: AppColors.spacingM),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Downloading ${_activeDownloads.length} song(s)',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          'Saving to server...',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -111,63 +164,120 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               itemBuilder: (context, index) {
                 final download = _activeDownloads[index];
                 final progress = (download['progress'] ?? 0) / 100.0;
-                return ListTile(
-                  leading: SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CircularProgressIndicator(
-                          strokeWidth: 3,
-                          value: progress,
-                        ),
-                        Center(
-                          child: Text(
-                            '${(progress * 100).toInt()}%',
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                        ),
-                      ],
-                    ),
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppColors.spacingM,
+                    vertical: AppColors.spacingS,
                   ),
-                  title: Text(
-                    download['filename'] ?? 'Unknown',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CircularProgressIndicator(
+                              strokeWidth: 3,
+                              value: progress,
+                              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            ),
+                            Center(
+                              child: Text(
+                                '${(progress * 100).toInt()}%',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppColors.spacingM),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              download['filename'] ?? 'Unknown',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: AppColors.spacingXS),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(AppColors.radiusFull),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 4,
+                                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  subtitle: const Text('Saving to server...'),
                 );
               },
             ),
-            const Divider(),
           ],
-          // Completed downloads
           Expanded(
             child: _downloads.isEmpty && _activeDownloads.isEmpty
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.download_done, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(AppColors.spacingXL),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.download_done_rounded,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        const SizedBox(height: AppColors.spacingL),
                         Text(
-                          'No downloads yet.\nTap the download icon on any song!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
+                          'No downloads yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: AppColors.spacingS),
+                        Text(
+                          'Tap the download icon on any song!',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
                         ),
                       ],
                     ),
                   )
                 : _downloads.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Waiting for downloads to complete...',
-                          style: TextStyle(color: Colors.grey),
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: AppColors.spacingM),
+                            Text(
+                              'Waiting for downloads to complete...',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(AppColors.spacingM),
                         itemCount: _downloads.length,
                         itemBuilder: (context, index) {
                           final song = _downloads[index];
