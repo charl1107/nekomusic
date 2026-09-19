@@ -40,13 +40,20 @@ class DownloadService extends ChangeNotifier {
     _cancelTokens[song.id] = cancelToken;
 
     try {
-      final audioUrl = await ApiService.getAudioUrl(song.id);
-      if (audioUrl == null) {
-        _errorMessage = 'Failed to get audio URL';
-        _states[song.id] = DownloadState.idle;
-        _progress[song.id] = 0.0;
-        notifyListeners();
-        return;
+      // Use backend proxy URL for web (avoids CORS), direct URL for mobile/desktop
+      String audioUrl;
+      if (kIsWeb) {
+        audioUrl = ApiService.getDownloadUrl(song.id);
+      } else {
+        final url = await ApiService.getAudioUrl(song.id);
+        if (url == null) {
+          _errorMessage = 'Failed to get audio URL';
+          _states[song.id] = DownloadState.idle;
+          _progress[song.id] = 0.0;
+          notifyListeners();
+          return;
+        }
+        audioUrl = url;
       }
 
       await downloadFile(audioUrl, song, onProgress: (p) {
