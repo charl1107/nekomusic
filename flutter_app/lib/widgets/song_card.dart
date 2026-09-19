@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/song.dart';
 import '../services/download_service.dart';
+import '../services/player_service.dart';
 
 class SongCard extends StatelessWidget {
   final Song song;
@@ -127,6 +128,20 @@ class SongCard extends StatelessWidget {
                 ),
               ),
             IconButton(
+              icon: Icon(
+                context.read<PlayerService>().isFavorite(song.id)
+                    ? Icons.favorite
+                    : Icons.favorite_border,
+                color: context.read<PlayerService>().isFavorite(song.id)
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+                size: 20,
+              ),
+              onPressed: () {
+                context.read<PlayerService>().toggleFavorite(song);
+              },
+            ),
+            IconButton(
               icon: const Icon(Icons.more_vert),
               onPressed: () => _showOptions(context),
             ),
@@ -215,6 +230,18 @@ class SongCard extends StatelessWidget {
                   }
                 },
               ),
+            ListTile(
+              leading: Icon(
+                context.read<PlayerService>().isFavorite(song.id)
+                    ? Icons.favorite
+                    : Icons.favorite_border,
+              ),
+              title: const Text('Add to favorites'),
+              onTap: () {
+                context.read<PlayerService>().toggleFavorite(song);
+                Navigator.pop(context);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.share),
               title: const Text('Share'),
