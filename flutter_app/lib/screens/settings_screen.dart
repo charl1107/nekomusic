@@ -43,7 +43,17 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             title: const Text('NekoMusic'),
             subtitle: const Text('A music player built with Flutter'),
-            onTap: () {},
+            onTap: () {
+              showAboutDialog(
+                context: context,
+                applicationName: 'NekoMusic',
+                applicationVersion: '1.0.0',
+                applicationIcon: const Icon(Icons.music_note, size: 48),
+                children: [
+                  const Text('A beautiful music player built with Flutter.'),
+                ],
+              );
+            },
           ),
         ],
       ),
