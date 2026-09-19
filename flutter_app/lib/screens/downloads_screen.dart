@@ -7,7 +7,6 @@ import '../models/song.dart';
 import '../services/storage_service.dart';
 import '../services/player_service.dart';
 import '../services/api_service.dart';
-import '../services/download_service.dart';
 import '../widgets/song_card.dart';
 
 class DownloadsScreen extends StatefulWidget {
