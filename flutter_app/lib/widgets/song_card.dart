@@ -173,47 +173,60 @@ class _SongCardState extends State<SongCard>
     final isDownloading = downloadService.isDownloading(widget.song.id);
     final isDownloaded = downloadService.getState(widget.song.id) == DownloadState.downloaded;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      margin: const EdgeInsets.only(bottom: AppColors.spacingS),
-      decoration: BoxDecoration(
-        color: _isHovered
-            ? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
-            : Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusM),
-        boxShadow: _isHovered ? AppColors.cardShadow : null,
-      ),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(AppColors.spacingS),
-          leading: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppColors.radiusS),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: _isHovered ? 0.2 : 0.1),
-                  blurRadius: _isHovered ? 8 : 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppColors.radiusS),
-              child: widget.song.thumbnail != null
-                  ? CachedNetworkImage(
-                      imageUrl: widget.song.thumbnail!,
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: AppColors.spacingS),
+        child: Material(
+          color: _isHovered
+              ? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+              : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppColors.radiusM),
+          elevation: _isHovered ? 2 : 0,
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(AppColors.spacingS),
+            leading: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppColors.radiusS),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: _isHovered ? 0.2 : 0.1),
+                    blurRadius: _isHovered ? 8 : 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppColors.radiusS),
+                child: widget.song.thumbnail != null
+                    ? CachedNetworkImage(
+                        imageUrl: widget.song.thumbnail!,
                         width: 56,
                         height: 56,
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      ),
-                      errorWidget: (context, url, error) => Container(
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          width: 56,
+                          height: 56,
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context).colorScheme.primary,
+                                Theme.of(context).colorScheme.secondary,
+                              ],
+                            ),
+                          ),
+                          child: const Icon(Icons.music_note, color: Colors.white),
+                        ),
+                      )
+                    : Container(
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
@@ -226,73 +239,58 @@ class _SongCardState extends State<SongCard>
                         ),
                         child: const Icon(Icons.music_note, color: Colors.white),
                       ),
-                    )
-                  : Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Theme.of(context).colorScheme.primary,
-                            Theme.of(context).colorScheme.secondary,
-                          ],
-                        ),
+              ),
+            ),
+            title: Text(
+              widget.song.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              widget.song.artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.song.duration != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: AppColors.spacingS),
+                    child: Text(
+                      widget.song.duration!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      child: const Icon(Icons.music_note, color: Colors.white),
-                    ),
-            ),
-          ),
-          title: Text(
-            widget.song.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-          subtitle: Text(
-            widget.song.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.song.duration != null)
-                Padding(
-                  padding: const EdgeInsets.only(right: AppColors.spacingS),
-                  child: Text(
-                    widget.song.duration!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
+                if (isDownloading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else if (isDownloaded)
+                  Icon(
+                    Icons.download_done,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                const SizedBox(width: AppColors.spacingXS),
+                _FavoriteButton(song: widget.song),
+                IconButton(
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  onPressed: () => _showOptions(context),
                 ),
-              // Download status indicator
-              if (isDownloading)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else if (isDownloaded)
-                Icon(
-                  Icons.download_done,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              const SizedBox(width: AppColors.spacingXS),
-              // Favorite button with animation
-              _FavoriteButton(song: widget.song),
-              IconButton(
-                icon: const Icon(Icons.more_vert, size: 20),
-                onPressed: () => _showOptions(context),
-              ),
-            ],
+              ],
+            ),
+            onTap: widget.onTap,
           ),
-          onTap: widget.onTap,
         ),
       ),
     );
