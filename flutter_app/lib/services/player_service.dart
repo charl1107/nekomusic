@@ -66,18 +66,23 @@ class PlayerService extends ChangeNotifier {
       _currentIndex = index;
     }
 
-    // Check for local file first (offline playback)
-    final localPath = await getLocalPath(song.id);
-    if (localPath != null) {
-      // Play from local file
-      await _player.setFilePath(localPath);
-    } else {
-      // Stream from server
-      final audioUrl = await ApiService.getAudioUrl(song.id);
-      if (audioUrl == null) return;
-      await _player.setUrl(audioUrl);
+    // Check for local file first (offline playback) - mobile only
+    if (!kIsWeb) {
+      final localPath = await getLocalPath(song.id);
+      if (localPath != null) {
+        await _player.setFilePath(localPath);
+        await _player.play();
+        StorageService.addRecentPlay(song);
+        StorageService.incrementPlayCount(song.id);
+        notifyListeners();
+        return;
+      }
     }
-    
+
+    // Stream from server
+    final audioUrl = await ApiService.getAudioUrl(song.id);
+    if (audioUrl == null) return;
+    await _player.setUrl(audioUrl);
     await _player.play();
     StorageService.addRecentPlay(song);
     StorageService.incrementPlayCount(song.id);
