@@ -195,11 +195,13 @@ class _SearchScreenState extends State<SearchScreen> {
             spacing: 8,
             runSpacing: 8,
             children: _recentSearches.map((query) {
-              return Chip(
-                label: Text(query),
-                deleteIcon: const Icon(Icons.close, size: 18),
-                onDeleted: () => _removeRecentSearch(query),
-                onPressed: () => _tapRecentSearch(query),
+              return GestureDetector(
+                onTap: () => _tapRecentSearch(query),
+                child: Chip(
+                  label: Text(query),
+                  deleteIcon: const Icon(Icons.close, size: 18),
+                  onDeleted: () => _removeRecentSearch(query),
+                ),
               );
             }).toList(),
           ),
