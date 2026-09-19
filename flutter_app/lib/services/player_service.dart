@@ -169,6 +169,17 @@ class PlayerService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool isFavorite(String songId) => StorageService.isFavorite(songId);
+
+  void toggleFavorite(Song song) {
+    if (isFavorite(song.id)) {
+      StorageService.removeFavorite(song.id);
+    } else {
+      StorageService.addFavorite(song);
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _player.dispose();
