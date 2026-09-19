@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
@@ -40,11 +41,25 @@ class MiniPlayer extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: song.thumbnail != null
-                      ? Image.network(
-                          song.thumbnail!,
+                      ? CachedNetworkImage(
+                          imageUrl: song.thumbnail!,
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            width: 48,
+                            height: 48,
+                            color: Colors.grey[300],
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: 48,
+                            height: 48,
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            child: Icon(
+                              Icons.music_note,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
                         )
                       : Container(
                           width: 48,

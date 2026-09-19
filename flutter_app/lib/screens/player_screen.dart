@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
 import '../services/download_service.dart';
@@ -43,30 +44,45 @@ class PlayerScreen extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: song.thumbnail != null
-                    ? Image.network(
-                        song.thumbnail!,
+              child: song.thumbnail != null
+                  ? CachedNetworkImage(
+                      imageUrl: song.thumbnail!,
+                      width: 280,
+                      height: 280,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
                         width: 280,
                         height: 280,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
+                        color: Colors.grey[300],
+                      ),
+                      errorWidget: (context, url, error) => Container(
                         width: 280,
                         height: 280,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Theme.of(context).colorScheme.primary,
-                              Theme.of(context).colorScheme.secondary,
-                            ],
-                          ),
-                        ),
-                        child: const Icon(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: Icon(
                           Icons.music_note,
                           size: 80,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
+                    )
+                  : Container(
+                      width: 280,
+                      height: 280,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Theme.of(context).colorScheme.primary,
+                            Theme.of(context).colorScheme.secondary,
+                          ],
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.music_note,
+                        size: 80,
+                        color: Colors.white,
+                      ),
+                    ),
               ),
               const SizedBox(height: 24),
               Text(

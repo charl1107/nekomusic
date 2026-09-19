@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/song.dart';
@@ -35,11 +36,25 @@ class SongCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: song.thumbnail != null
-                  ? Image.network(
-                      song.thumbnail!,
+                  ? CachedNetworkImage(
+                      imageUrl: song.thumbnail!,
                       width: 140,
                       height: 140,
                       fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        width: 140,
+                        height: 140,
+                        color: Colors.grey[300],
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        width: 140,
+                        height: 140,
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: Icon(
+                          Icons.music_note,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                     )
                   : Container(
                       width: 140,
@@ -85,11 +100,25 @@ class SongCard extends StatelessWidget {
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: song.thumbnail != null
-              ? Image.network(
-                  song.thumbnail!,
+              ? CachedNetworkImage(
+                  imageUrl: song.thumbnail!,
                   width: 56,
                   height: 56,
                   fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    width: 56,
+                    height: 56,
+                    color: Colors.grey[300],
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    width: 56,
+                    height: 56,
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    child: Icon(
+                      Icons.music_note,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                 )
               : Container(
                   width: 56,
