@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/download_service.dart';
 import '../services/player_service.dart';
+import 'queue_screen.dart';
 
 class PlayerScreen extends StatelessWidget {
   const PlayerScreen({super.key});
@@ -20,6 +21,15 @@ class PlayerScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         actions: [
+          IconButton(
+            icon: const Icon(Icons.queue_music),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const QueueScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () => _showOptions(context, song),
