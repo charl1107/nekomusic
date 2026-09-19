@@ -7,6 +7,9 @@ import 'download_service_helper.dart'
     if (dart.library.html) 'download_service_web.dart'
     if (dart.library.io) 'download_service_mobile.dart';
 
+// Web: triggers browser download (no local cache)
+// Mobile/Desktop: downloads to app documents directory
+
 enum DownloadState { idle, downloading, downloaded }
 
 class DownloadService extends ChangeNotifier {
@@ -59,6 +62,7 @@ class DownloadService extends ChangeNotifier {
   }
 
   Future<void> removeDownload(String songId) async {
+    await deleteFile(songId);
     await StorageService.removeDownload(songId);
     _states[songId] = DownloadState.idle;
     _progress[songId] = 0.0;

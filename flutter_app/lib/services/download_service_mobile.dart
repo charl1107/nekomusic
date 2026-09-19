@@ -10,7 +10,9 @@ Future<void> downloadFile(String url, Song song,
     {ProgressCallback? onProgress}) async {
   if (Platform.isAndroid) {
     final status = await Permission.storage.request();
-    if (!status.isGranted) return;
+    if (!status.isGranted) {
+      throw Exception('Storage permission denied');
+    }
   }
 
   final dir = await getApplicationDocumentsDirectory();
@@ -25,6 +27,18 @@ Future<void> downloadFile(String url, Song song,
       }
     },
   );
+}
+
+Future<void> deleteFile(String songId) async {
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/$songId.mp3');
+    if (await file.exists()) {
+      await file.delete();
+    }
+  } catch (e) {
+    // Ignore deletion errors
+  }
 }
 
 Future<String> saveToDeviceFile(Song song) async {

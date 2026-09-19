@@ -21,6 +21,18 @@ Future<void> downloadFile(String url, Song song, {ProgressCallback? onProgress})
   }
 }
 
+Future<void> deleteFile(String songId) async {
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/$songId.mp3');
+    if (await file.exists()) {
+      await file.delete();
+    }
+  } catch (e) {
+    // Ignore deletion errors
+  }
+}
+
 Future<String> saveToDeviceFile(Song song) async {
   final dir = await getDownloadsDirectory();
   final filePath = '${dir?.path ?? ''}/${song.title}.mp3';
