@@ -80,6 +80,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   @override
   Widget build(BuildContext context) {
     final playerService = context.watch<PlayerService>();
+    final downloadService = context.watch<DownloadService>();
+    _downloads = StorageService.getDownloads();
     return Scaffold(
       appBar: AppBar(title: const Text('Downloads')),
       body: _downloads.isEmpty
