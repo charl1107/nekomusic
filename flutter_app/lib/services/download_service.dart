@@ -15,6 +15,8 @@ enum DownloadState { idle, downloading, downloaded }
 class DownloadService extends ChangeNotifier {
   final Map<String, DownloadState> _states = {};
   final Map<String, double> _progress = {};
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
 
   DownloadState getState(String songId) =>
       _states[songId] ??
@@ -29,6 +31,7 @@ class DownloadService extends ChangeNotifier {
 
     _states[song.id] = DownloadState.downloading;
     _progress[song.id] = 0.0;
+    _errorMessage = null;
     notifyListeners();
 
     try {
@@ -48,6 +51,7 @@ class DownloadService extends ChangeNotifier {
     } catch (e) {
       _states[song.id] = DownloadState.idle;
       _progress[song.id] = 0.0;
+      _errorMessage = 'Download failed: ${e.toString()}';
     }
     notifyListeners();
   }
@@ -66,6 +70,11 @@ class DownloadService extends ChangeNotifier {
     await StorageService.removeDownload(songId);
     _states[songId] = DownloadState.idle;
     _progress[songId] = 0.0;
+    notifyListeners();
+  }
+
+  void clearError() {
+    _errorMessage = null;
     notifyListeners();
   }
 }

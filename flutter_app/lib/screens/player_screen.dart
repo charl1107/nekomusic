@@ -134,6 +134,17 @@ class PlayerScreen extends StatelessWidget {
                               downloadService.removeDownload(song.id);
                             } else {
                               downloadService.downloadSong(song);
+                              Future.delayed(const Duration(milliseconds: 100), () {
+                                if (context.mounted && downloadService.errorMessage != null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(downloadService.errorMessage!),
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                  downloadService.clearError();
+                                }
+                              });
                             }
                           },
                   );
@@ -256,6 +267,17 @@ class PlayerScreen extends StatelessWidget {
                   downloadService.removeDownload(song.id);
                 } else {
                   downloadService.downloadSong(song);
+                  Future.delayed(const Duration(milliseconds: 100), () {
+                    if (context.mounted && downloadService.errorMessage != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(downloadService.errorMessage!),
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                      downloadService.clearError();
+                    }
+                  });
                 }
                 Navigator.pop(context);
               },
