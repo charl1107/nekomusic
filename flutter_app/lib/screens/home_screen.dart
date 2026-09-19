@@ -103,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       slivers: [
         // Hero header
         SliverAppBar(
-          expandedHeight: 160,
+          expandedHeight: 180,
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
             title: const Text(
@@ -111,25 +111,57 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 24,
+                color: Colors.white,
               ),
             ),
             background: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.secondary,
+                    Color(0xFF6C63FF),
+                    Color(0xFF9C27B0),
+                    Color(0xFFE91E63),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: Center(
-                child: Icon(
-                  Icons.music_note,
-                  size: 80,
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
+              child: Stack(
+                children: [
+                  // Decorative circles
+                  Positioned(
+                    top: -30,
+                    right: -30,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -20,
+                    left: -20,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                  ),
+                  // Music note icon
+                  Center(
+                    child: Icon(
+                      Icons.music_note_rounded,
+                      size: 100,
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -137,6 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
             IconButton(
               icon: Icon(
                 playerService.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                color: Colors.white,
               ),
               onPressed: () => playerService.toggleDarkMode(),
             ),

@@ -80,8 +80,9 @@ class _SongCardState extends State<SongCard>
             decoration: BoxDecoration(
               color: _isHovered
                   ? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-                  : Colors.transparent,
+                  : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(AppColors.radiusM),
+              boxShadow: _isHovered ? AppColors.cardShadow : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +93,7 @@ class _SongCardState extends State<SongCard>
                     borderRadius: BorderRadius.circular(AppColors.radiusM),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: _isHovered ? 0.3 : 0.15),
+                        color: Colors.black.withValues(alpha: _isHovered ? 0.3 : 0.2),
                         blurRadius: _isHovered ? 16 : 8,
                         offset: const Offset(0, 4),
                       ),
@@ -109,7 +110,14 @@ class _SongCardState extends State<SongCard>
                             placeholder: (context, url) => Container(
                               width: 144,
                               height: 144,
-                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Theme.of(context).colorScheme.primaryContainer,
+                                    Theme.of(context).colorScheme.secondaryContainer,
+                                  ],
+                                ),
+                              ),
                             ),
                             errorWidget: (context, url, error) => Container(
                               width: 144,
