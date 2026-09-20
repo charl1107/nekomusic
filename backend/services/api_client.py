@@ -80,17 +80,23 @@ class YouTubeAPIClient:
 
     def get_audio_url(self, song_id):
         video_url = f"https://www.youtube.com/watch?v={song_id}"
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "quiet": True,
-            "no_warnings": True,
-        }
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(video_url, download=False)
-                return info.get("url")
-        except Exception:
-            pass
+        client_sets = ["android", "mweb", "tv", "web"]
+        for client in client_sets:
+            ydl_opts = {
+                "format": "bestaudio/best",
+                "quiet": True,
+                "no_warnings": True,
+                "geo_bypass": True,
+                "extractor_args": {"youtube": {"player_client": [client]}},
+            }
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(video_url, download=False)
+                    url = info.get("url")
+                    if url:
+                        return url
+            except Exception:
+                continue
         return None
 
     def get_playlist(self, playlist_id):
