@@ -18,20 +18,20 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PlayerService()),
         ChangeNotifierProvider(create: (_) => DownloadService()),
       ],
-      child: const NekoMusicApp(),
+      child: const CapuTuneApp(),
     ),
   );
 }
 
-class NekoMusicApp extends StatelessWidget {
-  const NekoMusicApp({super.key});
+class CapuTuneApp extends StatelessWidget {
+  const CapuTuneApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<PlayerService>(
       builder: (context, playerService, child) {
         return MaterialApp(
-          title: 'NekoMusic',
+          title: 'Capu Tune',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,

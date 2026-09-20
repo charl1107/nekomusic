@@ -69,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
                 selectedIcon: Icon(Icons.home),
-                label: 'Capu Tune',
+                label: 'Home',
               ),
               NavigationDestination(
                 icon: Icon(Icons.search),
@@ -103,15 +103,80 @@ class _HomeScreenState extends State<HomeScreen> {
       slivers: [
         // Hero header
         SliverAppBar(
-          expandedHeight: 120,
+          expandedHeight: 180,
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
-            title: const Text(
-              'Capu Tune',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: Colors.white,
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.asset(
+                    'assets/images/logo.jpg',
+                    width: 28,
+                    height: 28,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Capu Tune',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            background: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF6C63FF),
+                    Color(0xFF9C27B0),
+                    Color(0xFFE91E63),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Stack(
+                children: [
+                  // Decorative circles
+                  Positioned(
+                    top: -30,
+                    right: -30,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -20,
+                    left: -20,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                  ),
+                  // Music note icon
+                  Center(
+                    child: Icon(
+                      Icons.music_note_rounded,
+                      size: 100,
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

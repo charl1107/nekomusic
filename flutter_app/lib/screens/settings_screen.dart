@@ -41,14 +41,22 @@ class SettingsScreen extends StatelessWidget {
             subtitle: Text('1.0.0'),
           ),
           ListTile(
-            title: const Text('NekoMusic'),
+            title: const Text('Capu Tune'),
             subtitle: const Text('A music player built with Flutter'),
             onTap: () {
               showAboutDialog(
                 context: context,
-                applicationName: 'NekoMusic',
+                applicationName: 'Capu Tune',
                 applicationVersion: '1.0.0',
-                applicationIcon: const Icon(Icons.music_note, size: 48),
+                applicationIcon: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/images/logo.jpg',
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                  ),
+                ),
                 children: [
                   const Text('A beautiful music player built with Flutter.'),
                 ],
