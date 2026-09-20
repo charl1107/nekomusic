@@ -176,7 +176,7 @@ def get_downloaded_file(song_id):
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "app": "NekoMusic"})
+    return jsonify({"status": "ok", "app": "Capu Tune"})
 
 
 if __name__ == "__main__":
