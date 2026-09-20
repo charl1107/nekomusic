@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/song.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:5000/api';
+  static const String baseUrl = 'https://fluffy-space-waddle-r4774j94rqqw3x7xv-5000.app.github.dev/api';
 
   static Future<List<Song>> search(String query) async {
     try {
