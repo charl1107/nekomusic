@@ -305,6 +305,9 @@ class _SongCardState extends State<SongCard>
   }
 
   void _showOptions(BuildContext context) {
+    final downloadService = context.read<DownloadService>();
+    final isDownloaded = downloadService.getState(widget.song.id) == DownloadState.downloaded;
+
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -328,6 +331,26 @@ class _SongCardState extends State<SongCard>
                 Navigator.pop(context);
               },
             ),
+            if (isDownloaded)
+              ListTile(
+                leading: const Icon(Icons.file_download_outlined),
+                title: const Text('Save to device (MP3)'),
+                subtitle: const Text('Export unencrypted MP3 to Downloads folder'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final path = await downloadService.saveToDevice(widget.song);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(path != null
+                            ? 'Saved to Downloads folder'
+                            : 'Failed to save to device'),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.share),
               title: const Text('Share'),

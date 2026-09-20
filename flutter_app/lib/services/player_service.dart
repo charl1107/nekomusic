@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/song.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
+import 'cipher_service.dart';
 
 enum RepeatMode { off, all, one }
 
@@ -68,19 +69,8 @@ class PlayerService extends ChangeNotifier {
 
     // Mobile: try local file first (offline playback)
     if (!kIsWeb) {
-      final localPath = await getLocalPath(song.id);
-      if (localPath != null) {
-        try {
-          await _player.setFilePath(localPath);
-          await _player.play();
-          StorageService.addRecentPlay(song);
-          StorageService.incrementPlayCount(song.id);
-          notifyListeners();
-          return;
-        } catch (e) {
-          // Local file failed, try streaming as fallback
-        }
-      }
+      final played = await _tryPlayLocal(song);
+      if (played) return;
     }
 
     // Stream from server
@@ -95,18 +85,7 @@ class PlayerService extends ChangeNotifier {
     } catch (e) {
       // Server failed - try local file as fallback (mobile only)
       if (!kIsWeb) {
-        final localPath = await getLocalPath(song.id);
-        if (localPath != null) {
-          try {
-            await _player.setFilePath(localPath);
-            await _player.play();
-            StorageService.addRecentPlay(song);
-            StorageService.incrementPlayCount(song.id);
-            notifyListeners();
-          } catch (e2) {
-            // Both server and local failed
-          }
-        }
+        await _tryPlayLocal(song);
       }
     }
   }
@@ -218,13 +197,47 @@ class PlayerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Check if a song has a local file (downloaded)
-  Future<bool> hasLocalFile(String songId) async {
-    if (kIsWeb) return false; // Web doesn't have local files
+  /// Attempts to play local encrypted (.ct) or legacy file
+  Future<bool> _tryPlayLocal(Song song) async {
+    if (kIsWeb) return false;
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$songId.mp3');
-      return await file.exists();
+      final encryptedFile = File('${dir.path}/${song.id}.ct');
+      if (await encryptedFile.exists()) {
+        final length = await encryptedFile.length();
+        final source = EncryptedAudioSource(encryptedFile, length);
+        await _player.setAudioSource(source);
+        await _player.play();
+        StorageService.addRecentPlay(song);
+        StorageService.incrementPlayCount(song.id);
+        notifyListeners();
+        return true;
+      }
+
+      final legacyFile = File('${dir.path}/${song.id}.mp3');
+      if (await legacyFile.exists()) {
+        await _player.setFilePath(legacyFile.path);
+        await _player.play();
+        StorageService.addRecentPlay(song);
+        StorageService.incrementPlayCount(song.id);
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      // Local playback error, fallback to streaming
+    }
+    return false;
+  }
+
+  /// Check if a song has a local file (downloaded)
+  Future<bool> hasLocalFile(String songId) async {
+    if (kIsWeb) return false;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final encFile = File('${dir.path}/$songId.ct');
+      if (await encFile.exists()) return true;
+      final mp3File = File('${dir.path}/$songId.mp3');
+      return await mp3File.exists();
     } catch (e) {
       return false;
     }
@@ -235,11 +248,10 @@ class PlayerService extends ChangeNotifier {
     if (kIsWeb) return null;
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final filePath = '${dir.path}/$songId.mp3';
-      final file = File(filePath);
-      if (await file.exists()) {
-        return filePath;
-      }
+      final encFile = File('${dir.path}/$songId.ct');
+      if (await encFile.exists()) return encFile.path;
+      final mp3File = File('${dir.path}/$songId.mp3');
+      if (await mp3File.exists()) return mp3File.path;
     } catch (e) {
       // Ignore errors
     }
@@ -250,5 +262,39 @@ class PlayerService extends ChangeNotifier {
   void dispose() {
     _player.dispose();
     super.dispose();
+  }
+}
+
+// In-memory streaming audio source that decrypts .ct files on-the-fly.
+// Decryption happens strictly in RAM; no unencrypted file is ever written to disk.
+// ignore: experimental_member_use
+class EncryptedAudioSource extends StreamAudioSource {
+  final File file;
+  final int fileSize;
+
+  EncryptedAudioSource(this.file, this.fileSize);
+
+  @override
+  // ignore: experimental_member_use
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    start ??= 0;
+    end ??= fileSize;
+    final stream = _decryptStream(file.openRead(start, end), start);
+    // ignore: experimental_member_use
+    return StreamAudioResponse(
+      sourceLength: fileSize,
+      contentLength: end - start,
+      offset: start,
+      stream: stream,
+      contentType: 'audio/mpeg',
+    );
+  }
+
+  Stream<List<int>> _decryptStream(Stream<List<int>> source, int startOffset) async* {
+    var offset = startOffset;
+    await for (final chunk in source) {
+      yield CipherService.transformChunk(chunk, offset);
+      offset += chunk.length;
+    }
   }
 }
