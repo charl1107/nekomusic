@@ -84,6 +84,7 @@ class YouTubeAPIClient:
     def get_audio_url(self, song_id):
         video_url = f"https://www.youtube.com/watch?v={song_id}"
         client_sets = ["android", "mweb", "tv", "web"]
+        self.last_audio_error = None
         for client in client_sets:
             ydl_opts = {
                 "format": "bestaudio/best",
@@ -98,7 +99,9 @@ class YouTubeAPIClient:
                     url = info.get("url")
                     if url:
                         return url
-            except Exception:
+            except Exception as e:
+                self.last_audio_error = f"{client}: {e}"
+                print(f"[yt-dlp] {client} failed: {e}", flush=True)
                 continue
         return None
 
