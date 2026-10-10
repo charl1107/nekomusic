@@ -14,11 +14,15 @@ class YouTubeAPIClient:
         # Optional YouTube cookies (Netscape cookies.txt contents) to bypass
         # bot checks from datacenter IPs. Read from env, written to a temp file.
         self.cookiefile = None
+        self.cookie_count = 0
         cookies = os.getenv("YOUTUBE_COOKIES", "").strip()
         if cookies:
             self.cookiefile = os.path.join(tempfile.gettempdir(), "yt_cookies.txt")
             with open(self.cookiefile, "w", encoding="utf-8") as f:
                 f.write(cookies if cookies.endswith("\n") else cookies + "\n")
+            with open(self.cookiefile, encoding="utf-8") as f:
+                # Netscape cookie rows contain >=5 tabs (comments/header don't)
+                self.cookie_count = sum(1 for line in f if line.count("\t") >= 5)
 
     def search(self, query):
         if not self.api_key:
