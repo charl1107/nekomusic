@@ -28,9 +28,12 @@ class YouTubeAPIClient:
             data = response.json()
             results = []
             for item in data.get("items", []):
+                video_id = item.get("id", {}).get("videoId")
+                if not video_id:
+                    continue
                 snippet = item["snippet"]
                 results.append({
-                    "id": item["id"]["videoId"],
+                    "id": video_id,
                     "title": snippet["title"],
                     "artist": snippet["channelTitle"],
                     "thumbnail": snippet["thumbnails"]["high"]["url"],
