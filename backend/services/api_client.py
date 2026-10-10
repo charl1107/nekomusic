@@ -93,39 +93,61 @@ class YouTubeAPIClient:
         except requests.RequestException:
             return self._mock_song(song_id)
 
+    @staticmethod
+    def _best_audio_url(info):
+        """Pick a playable URL out of an extract_info result."""
+        if info.get("url"):
+            return info["url"]
+        fmts = [f for f in (info.get("formats") or []) if f.get("url")]
+        if not fmts:
+            return None
+
+        def score(f):
+            audio = f.get("acodec") not in (None, "none")
+            nofrag = not f.get("fragments")
+            audio_only = f.get("vcodec") in (None, "none")
+            return (audio and nofrag and audio_only, audio and nofrag, audio)
+
+        return max(fmts, key=score).get("url")
+
     def get_audio_url(self, song_id):
         video_url = f"https://www.youtube.com/watch?v={song_id}"
         client_sets = ["android_vr", "android", "ios", "mweb", "tv", "web"]
         self.last_audio_error = None
         self.audio_errors = []
         for client in client_sets:
-            ydl_opts = {
-                "format": "bestaudio/best",
+            base_opts = {
                 "quiet": True,
                 "no_warnings": True,
                 "geo_bypass": True,
                 "extractor_args": {"youtube": {"player_client": [client]}},
             }
             if self.cookiefile:
-                ydl_opts["cookiefile"] = self.cookiefile
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(video_url, download=False)
-                    url = info.get("url")
+                base_opts["cookiefile"] = self.cookiefile
+            # 1) preferred: audio-only format selection; 2) fallback: default
+            # selection, then pick the best audio URL manually.
+            for fmt in ("bestaudio/best", None):
+                opts = dict(base_opts)
+                if fmt:
+                    opts["format"] = fmt
+                try:
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        info = ydl.extract_info(video_url, download=False)
+                    url = self._best_audio_url(info)
                     if url:
                         return url
                     fmts = info.get("formats") or []
                     self.audio_errors.append(
-                        f"{client}: no-url _type={info.get('_type')} "
+                        f"{client} fmt={fmt}: no-url _type={info.get('_type')} "
                         f"entries={len(info.get('entries') or [])} "
-                        f"fmts={[(f.get('format_id'), bool(f.get('url')), bool(f.get('urls')), bool(f.get('fragments'))) for f in fmts][:8]} "
+                        f"fmts={[(f.get('format_id'), f.get('acodec'), bool(f.get('url'))) for f in fmts][:10]} "
                         f"keys={sorted(info.keys())[:15]}"
                     )
-            except Exception as e:
-                self.last_audio_error = f"{client}: {e}"
-                self.audio_errors.append(f"{client}: {e}")
-                print(f"[yt-dlp] {client} failed: {e}", flush=True)
-                continue
+                except Exception as e:
+                    self.last_audio_error = f"{client} fmt={fmt}: {e}"
+                    self.audio_errors.append(f"{client} fmt={fmt}: {e}")
+                    print(f"[yt-dlp] {client} fmt={fmt} failed: {e}", flush=True)
+                    continue
         return None
 
     def get_playlist(self, playlist_id):
