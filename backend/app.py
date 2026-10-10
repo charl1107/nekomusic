@@ -40,7 +40,7 @@ def get_song(song_id):
 def stream(song_id):
     audio_url = api_client.get_audio_url(song_id)
     if not audio_url:
-        return jsonify({"error": "Audio not available"}), 404
+        return jsonify({"error": "Audio not available", "detail": getattr(api_client, "audio_errors", None) or api_client.last_audio_error}), 404
     return jsonify({"url": audio_url})
 
 
@@ -55,7 +55,7 @@ def download(song_id):
     """Stream audio for playback (no download)"""
     audio_url = api_client.get_audio_url(song_id)
     if not audio_url:
-        return jsonify({"error": "Audio not available", "detail": api_client.last_audio_error}), 404
+        return jsonify({"error": "Audio not available", "detail": getattr(api_client, "audio_errors", None) or api_client.last_audio_error}), 404
 
     import requests as req
     headers = {
