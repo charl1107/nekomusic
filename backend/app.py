@@ -179,5 +179,78 @@ def health():
     return jsonify({"status": "ok", "app": "Capu Tune"})
 
 
+@app.route("/api/probe/<song_id>", methods=["GET"])
+def probe(song_id):
+    """Temporary: test whether YouTube Music's WEB_REMIX player endpoint
+    returns streaming data from this server's IP."""
+    import requests as req
+
+    cookie_str = ""
+    if api_client.cookiefile and os.path.exists(api_client.cookiefile):
+        pairs = []
+        with open(api_client.cookiefile, encoding="utf-8") as f:
+            for line in f:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) >= 7:
+                    name = parts[5]
+                    val = parts[6]
+                    if name.startswith("#HttpOnly_"):
+                        name = name[len("#HttpOnly_"):]
+                    pairs.append(f"{name}={val}")
+        cookie_str = "; ".join(pairs)
+
+    payload = {
+        "context": {
+            "client": {
+                "clientName": "WEB_REMIX",
+                "clientVersion": "1.20260901.01.00",
+                "hl": "en",
+                "gl": "US",
+            }
+        },
+        "videoId": song_id,
+        "contentCheckOk": True,
+        "racyCheckOk": True,
+    }
+    headers = {
+        "Origin": "https://music.youtube.com",
+        "Referer": "https://music.youtube.com/watch?v=" + song_id,
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        ),
+        "Content-Type": "application/json",
+    }
+    if cookie_str:
+        headers["Cookie"] = cookie_str
+
+    try:
+        r = req.post(
+            "https://music.youtube.com/youtubei/v1/player?prettyPrint=false",
+            json=payload,
+            headers=headers,
+            timeout=20,
+        )
+        data = r.json()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+    ps = data.get("playabilityStatus") or {}
+    sd = data.get("streamingData") or {}
+    adaptive = sd.get("adaptiveFormats") or []
+    audio_fmts = [f for f in adaptive if str(f.get("mimeType", "")).startswith("audio")]
+    return jsonify({
+        "http": r.status_code,
+        "status": ps.get("status"),
+        "reason": ps.get("reason"),
+        "formats": len(sd.get("formats") or []),
+        "adaptive": len(adaptive),
+        "audio_formats": len(audio_fmts),
+        "hls": bool(sd.get("hlsManifestUrl")),
+        "sample_audio_url": (audio_fmts[0].get("url") or "")[:80] if audio_fmts else None,
+        "cookies_sent": bool(cookie_str),
+    })
+
+
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
