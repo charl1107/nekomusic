@@ -83,7 +83,7 @@ class YouTubeAPIClient:
 
     def get_audio_url(self, song_id):
         video_url = f"https://www.youtube.com/watch?v={song_id}"
-        client_sets = ["android", "ios", "mweb", "tv", "web"]
+        client_sets = ["android_vr", "android", "ios", "mweb", "tv", "web"]
         self.last_audio_error = None
         self.audio_errors = []
         for client in client_sets:
