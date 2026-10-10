@@ -114,6 +114,13 @@ class YouTubeAPIClient:
                     url = info.get("url")
                     if url:
                         return url
+                    fmts = info.get("formats") or []
+                    self.audio_errors.append(
+                        f"{client}: no-url _type={info.get('_type')} "
+                        f"entries={len(info.get('entries') or [])} "
+                        f"fmts={[(f.get('format_id'), bool(f.get('url')), bool(f.get('urls')), bool(f.get('fragments'))) for f in fmts][:8]} "
+                        f"keys={sorted(info.keys())[:15]}"
+                    )
             except Exception as e:
                 self.last_audio_error = f"{client}: {e}"
                 self.audio_errors.append(f"{client}: {e}")
