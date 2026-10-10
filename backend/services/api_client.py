@@ -151,6 +151,24 @@ class YouTubeAPIClient:
                     self.last_audio_error = f"{client} fmt={fmt}: {e}"
                     self.audio_errors.append(f"{client} fmt={fmt}: {e}")
                     print(f"[yt-dlp] {client} fmt={fmt} failed: {e}", flush=True)
+                    if fmt is None and client == client_sets[0]:
+                        # No selector was applied and it still failed — dump
+                        # the raw extracted info to see what YouTube returned.
+                        try:
+                            with yt_dlp.YoutubeDL(opts) as ydl:
+                                raw = ydl.extract_info(
+                                    video_url, download=False, process=False
+                                )
+                            raw_fmts = raw.get("formats") or []
+                            self.audio_errors.append(
+                                f"{client} raw: type={raw.get('_type')} "
+                                f"formats={len(raw_fmts)} "
+                                f"hls={bool(raw.get('hlsManifestUrl'))} "
+                                f"fmtlist={[(f.get('format_id'), f.get('acodec'), f.get('vcodec'), bool(f.get('url'))) for f in raw_fmts][:12]} "
+                                f"keys={sorted(raw.keys())[:20]}"
+                            )
+                        except Exception as e2:
+                            self.audio_errors.append(f"{client} raw-ERR: {e2}")
                     continue
         return None
 
