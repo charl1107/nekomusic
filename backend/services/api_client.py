@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import requests
 import yt_dlp
 from config import Config
@@ -7,6 +10,15 @@ class YouTubeAPIClient:
     def __init__(self):
         self.api_key = Config.YOUTUBE_API_KEY
         self.base_url = Config.YOUTUBE_API_BASE
+
+        # Optional YouTube cookies (Netscape cookies.txt contents) to bypass
+        # bot checks from datacenter IPs. Read from env, written to a temp file.
+        self.cookiefile = None
+        cookies = os.getenv("YOUTUBE_COOKIES", "").strip()
+        if cookies:
+            self.cookiefile = os.path.join(tempfile.gettempdir(), "yt_cookies.txt")
+            with open(self.cookiefile, "w", encoding="utf-8") as f:
+                f.write(cookies if cookies.endswith("\n") else cookies + "\n")
 
     def search(self, query):
         if not self.api_key:
@@ -94,6 +106,8 @@ class YouTubeAPIClient:
                 "geo_bypass": True,
                 "extractor_args": {"youtube": {"player_client": [client]}},
             }
+            if self.cookiefile:
+                ydl_opts["cookiefile"] = self.cookiefile
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(video_url, download=False)
