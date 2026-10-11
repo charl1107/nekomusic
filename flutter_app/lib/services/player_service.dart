@@ -6,6 +6,7 @@ import '../models/song.dart';
 import 'stream_resolver.dart';
 import 'storage_service.dart';
 import 'cipher_service.dart';
+import '../utils/snackbar.dart';
 
 enum RepeatMode { off, all, one }
 
@@ -78,13 +79,23 @@ class PlayerService extends ChangeNotifier {
     // Stream on-device; web: resolver stub returns null -> web playback disabled until IFrame phase
     try {
       final audioUrl = await _resolver.resolve(song.id);
-      if (audioUrl == null) return;
+      if (audioUrl == null) {
+        debugPrint('[play] resolve returned null for ${song.id}');
+        showGlobalSnack(
+            'Stream extraction failed - YouTube gave no audio for this song');
+        return;
+      }
+      debugPrint('[play] resolve OK for ${song.id}, loading into player');
       await _player.setUrl(audioUrl);
       await _player.play();
       StorageService.addRecentPlay(song);
       StorageService.incrementPlayCount(song.id);
       notifyListeners();
     } catch (e) {
+      debugPrint('[play] playback error for ${song.id}: $e');
+      final short = e.toString();
+      showGlobalSnack('Playback error: '
+          '${short.length > 160 ? '${short.substring(0, 160)}...' : short}');
       // Stream failed - try local file as fallback (mobile only)
       if (!kIsWeb) {
         await _tryPlayLocal(song);

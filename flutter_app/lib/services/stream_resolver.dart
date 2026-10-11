@@ -23,7 +23,9 @@ class StreamResolver {
   Future<String?> resolve(String videoId) async {
     try {
       return await _lookup(videoId);
-    } catch (_) {
+    } catch (e) {
+      // ignore: avoid_print
+      print('[resolve] extraction failed for $videoId: $e');
       return null;
     }
   }
