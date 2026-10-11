@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/song.dart';
 import 'stream_resolver.dart';
@@ -11,7 +13,20 @@ import '../utils/snackbar.dart';
 enum RepeatMode { off, all, one }
 
 class PlayerService extends ChangeNotifier {
-  final AudioPlayer _player = AudioPlayer();
+  /// media_kit (libmpv) engine: all network streaming and legacy .mp3 files.
+  /// Its own HTTP stack (libcurl) bypasses ExoPlayer, which fails to load
+  /// googlevideo streams on the target device.
+  final Player _mk = Player();
+
+  /// just_audio engine: created lazily, used only for .ct encrypted files
+  /// (RAM-only decrypt via [EncryptedAudioSource]). Never created on
+  /// Windows, which has no just_audio implementation.
+  AudioPlayer? _justAudio;
+  bool _usesLocalPlayback = false;
+
+  final _positionController = StreamController<Duration>.broadcast();
+  final _durationController = StreamController<Duration?>.broadcast();
+
   List<Song> _queue = [];
   int _currentIndex = -1;
   bool _isDarkMode = false;
@@ -22,7 +37,6 @@ class PlayerService extends ChangeNotifier {
   RepeatMode _repeatMode = RepeatMode.off;
   final StreamResolver _resolver;
 
-  AudioPlayer get player => _player;
   List<Song> get queue => List.unmodifiable(_queue);
   int get currentIndex => _currentIndex;
   bool get isDarkMode => _isDarkMode;
@@ -36,22 +50,59 @@ class PlayerService extends ChangeNotifier {
           ? _queue[_currentIndex]
           : null;
 
-  Duration get position => _player.position;
-  Duration get duration => _player.duration ?? Duration.zero;
-  Stream<Duration> get positionStream => _player.positionStream;
-  Stream<Duration?> get durationStream => _player.durationStream;
-  Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+  // Only the active engine is read: _local's branch is unreachable until
+  // _usesLocalPlayback becomes true, which only happens after creation.
+  Duration get position =>
+      _usesLocalPlayback ? _local.position : _mk.state.position;
+  Duration get duration =>
+      (_usesLocalPlayback ? _local.duration : _mk.state.duration) ??
+      Duration.zero;
+  Stream<Duration> get positionStream => _positionController.stream;
+  Stream<Duration?> get durationStream => _durationController.stream;
+
+  /// Lazy just_audio instance; mirrors its state into the service streams
+  /// on first creation.
+  AudioPlayer get _local {
+    return _justAudio ??= () {
+      final p = AudioPlayer();
+      p.positionStream.listen(_positionController.add);
+      p.durationStream.listen(_durationController.add);
+      p.playerStateStream.listen((state) {
+        _isPlaying = state.playing;
+        if (state.processingState == ProcessingState.completed && _autoplay) {
+          playNext();
+        }
+        notifyListeners();
+      });
+      return p;
+    }();
+  }
 
   PlayerService({StreamResolver? resolver})
       : _resolver = resolver ?? StreamResolver() {
     _loadSettings();
-    _player.playerStateStream.listen((state) {
-      _isPlaying = state.playing;
-      if (state.processingState == ProcessingState.completed && _autoplay) {
-        playNext();
-      }
+    _mk.stream.position.listen(_positionController.add);
+    _mk.stream.duration.listen(_durationController.add);
+    _mk.stream.playing.listen((p) {
+      _isPlaying = p;
       notifyListeners();
     });
+    _mk.stream.completed.listen((c) {
+      if (c && _autoplay) {
+        playNext();
+      }
+    });
+    // media_kit reports load failures on this stream rather than throwing
+    // from open(); surface them with the same popup contract as thrown errors.
+    _mk.stream.error.listen((msg) {
+      debugPrint('[mk] error: $msg');
+      showGlobalSnack('Playback error: $msg');
+      final s = currentSong;
+      if (s != null && !_usesLocalPlayback) {
+        _tryPlayLocal(s);
+      }
+    });
+    _mk.stream.log.listen((l) => debugPrint('[mk] ${l.text}'));
   }
 
   Future<void> _loadSettings() async {
@@ -85,17 +136,15 @@ class PlayerService extends ChangeNotifier {
             'Stream extraction failed - YouTube gave no audio for this song');
         return;
       }
-      debugPrint('[play] resolve OK for ${song.id}, loading into player');
-      await _player.setUrl(audioUrl);
-      await _player.play();
+      debugPrint('[play] resolve OK for ${song.id}, loading into media_kit');
+      _usesLocalPlayback = false;
+      await _mk.open(Media(audioUrl), play: true);
       StorageService.addRecentPlay(song);
       StorageService.incrementPlayCount(song.id);
       notifyListeners();
     } catch (e) {
       debugPrint('[play] playback error for ${song.id}: $e');
-      final short = e.toString();
-      showGlobalSnack('Playback error: '
-          '${short.length > 160 ? '${short.substring(0, 160)}...' : short}');
+      showGlobalSnack('Playback error: $e');
       // Stream failed - try local file as fallback (mobile only)
       if (!kIsWeb) {
         await _tryPlayLocal(song);
@@ -115,8 +164,12 @@ class PlayerService extends ChangeNotifier {
     if (_queue.isEmpty) return;
 
     if (_repeatMode == RepeatMode.one) {
-      await _player.seek(Duration.zero);
-      await _player.play();
+      await seek(Duration.zero);
+      if (_usesLocalPlayback) {
+        await _local.play();
+      } else {
+        await _mk.play();
+      }
       return;
     }
 
@@ -141,19 +194,32 @@ class PlayerService extends ChangeNotifier {
   }
 
   Future<void> togglePlay() async {
-    if (_player.playing) {
-      await _player.pause();
+    if (_usesLocalPlayback) {
+      if (_local.playing) {
+        await _local.pause();
+      } else {
+        await _local.play();
+      }
     } else {
-      await _player.play();
+      if (_mk.state.playing) {
+        await _mk.pause();
+      } else {
+        await _mk.play();
+      }
     }
   }
 
   Future<void> seek(Duration position) async {
-    await _player.seek(position);
+    if (_usesLocalPlayback) {
+      await _local.seek(position);
+    } else {
+      await _mk.seek(position);
+    }
   }
 
   Future<void> stop() async {
-    await _player.stop();
+    await _mk.stop();
+    await _justAudio?.stop();
     _currentIndex = -1;
     notifyListeners();
   }
@@ -166,7 +232,7 @@ class PlayerService extends ChangeNotifier {
 
   void setAutoplay(bool value) {
     _autoplay = value;
-    StorageService.setAutoplay(value);
+    StorageService.setAutoplay(_autoplay);
     notifyListeners();
   }
 
@@ -218,9 +284,9 @@ class PlayerService extends ChangeNotifier {
       final encryptedFile = File('${dir.path}/${song.id}.ct');
       if (await encryptedFile.exists()) {
         final length = await encryptedFile.length();
-        final source = EncryptedAudioSource(encryptedFile, length);
-        await _player.setAudioSource(source);
-        await _player.play();
+        _usesLocalPlayback = true;
+        await _local.setAudioSource(EncryptedAudioSource(encryptedFile, length));
+        await _local.play();
         StorageService.addRecentPlay(song);
         StorageService.incrementPlayCount(song.id);
         notifyListeners();
@@ -229,8 +295,8 @@ class PlayerService extends ChangeNotifier {
 
       final legacyFile = File('${dir.path}/${song.id}.mp3');
       if (await legacyFile.exists()) {
-        await _player.setFilePath(legacyFile.path);
-        await _player.play();
+        _usesLocalPlayback = false;
+        await _mk.open(Media(legacyFile.path), play: true);
         StorageService.addRecentPlay(song);
         StorageService.incrementPlayCount(song.id);
         notifyListeners();
@@ -273,7 +339,10 @@ class PlayerService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _player.dispose();
+    _mk.dispose();
+    _justAudio?.dispose();
+    _positionController.close();
+    _durationController.close();
     super.dispose();
   }
 }
