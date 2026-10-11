@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/api_service.dart';
+import '../services/discovery_service.dart';
 import '../services/player_service.dart';
 import '../services/storage_service.dart';
 import '../models/song.dart';
@@ -69,7 +69,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _hasSearched = true;
     });
 
-    final results = await ApiService.search(query);
+    final results = await DiscoveryService.search(query);
     if (mounted) {
       setState(() {
         _results = results;

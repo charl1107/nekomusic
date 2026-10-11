@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/playlist.dart';
-import '../services/api_service.dart';
+import '../services/discovery_service.dart';
 import '../services/storage_service.dart';
 import 'playlist_detail_screen.dart';
 
@@ -115,7 +115,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
 
     if (result != null && result.isNotEmpty) {
-      final songs = await ApiService.importYouTubePlaylist(result);
+      final songs = await DiscoveryService.importPlaylist(result);
       if (songs.isNotEmpty && mounted) {
         final nameController = TextEditingController(text: 'Imported Playlist');
         final name = await showDialog<String>(
