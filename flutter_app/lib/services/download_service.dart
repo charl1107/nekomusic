@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/song.dart';
-import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import 'download_service_helper.dart'
     if (dart.library.html) 'download_service_web.dart'
     if (dart.library.io) 'download_service_mobile.dart';
+import 'stream_resolver.dart';
 
 enum DownloadState { idle, downloading, downloaded }
 
@@ -14,6 +14,8 @@ class DownloadService extends ChangeNotifier {
   final Map<String, DownloadState> _states = {};
   final Map<String, double> _progress = {};
   final Map<String, CancelToken> _cancelTokens = {};
+  final Map<String, Song> _activeSongs = {};
+  final StreamResolver _resolver = StreamResolver();
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
@@ -28,24 +30,31 @@ class DownloadService extends ChangeNotifier {
   bool isDownloading(String songId) =>
       _states[songId] == DownloadState.downloading;
 
+  List<Song> get activeSongs => List.unmodifiable(_activeSongs.values);
+
   Future<void> downloadSong(Song song) async {
     if (getState(song.id) == DownloadState.downloading) return;
 
     _states[song.id] = DownloadState.downloading;
     _progress[song.id] = 0.0;
     _errorMessage = null;
+    _activeSongs[song.id] = song;
     notifyListeners();
 
     final cancelToken = CancelToken();
     _cancelTokens[song.id] = cancelToken;
 
     try {
-      // Use backend proxy URL for web (avoids CORS), direct URL for mobile/desktop
+      // Resolve a direct audio URL on-device; web downloads are unsupported
       String audioUrl;
       if (kIsWeb) {
-        audioUrl = ApiService.getDownloadUrl(song.id);
+        _errorMessage = 'Downloads are not supported on web yet';
+        _states[song.id] = DownloadState.idle;
+        _progress[song.id] = 0.0;
+        notifyListeners();
+        return;
       } else {
-        final url = await ApiService.getAudioUrl(song.id);
+        final url = await _resolver.resolve(song.id);
         if (url == null) {
           _errorMessage = 'Failed to get audio URL';
           _states[song.id] = DownloadState.idle;
@@ -78,6 +87,7 @@ class DownloadService extends ChangeNotifier {
       _errorMessage = 'Download failed: ${e.toString()}';
     } finally {
       _cancelTokens.remove(song.id);
+      _activeSongs.remove(song.id);
     }
     notifyListeners();
   }

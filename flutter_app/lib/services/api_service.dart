@@ -1,15 +1,20 @@
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/song.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://fluffy-space-waddle-r4774j94rqqw3x7xv-5000.app.github.dev/api';
+  static final String baseUrl =
+      dotenv.env['API_BASE_URL'] ?? 'https://nekomusic-5d94.onrender.com/api';
+  static const Duration _timeout = Duration(seconds: 60);
 
   static Future<List<Song>> search(String query) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/search?q=${Uri.encodeComponent(query)}'),
-      );
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/search?q=${Uri.encodeComponent(query)}'),
+          )
+          .timeout(_timeout);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return (data['results'] as List)
@@ -24,25 +29,10 @@ class ApiService {
 
   static Future<Song?> getSong(String id) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/song/$id'));
+      final response =
+          await http.get(Uri.parse('$baseUrl/song/$id')).timeout(_timeout);
       if (response.statusCode == 200) {
         return Song.fromJson(json.decode(response.body));
-      }
-    } catch (e) {
-      // ignore
-    }
-    return null;
-  }
-
-  static String getStreamUrl(String id) => '$baseUrl/stream/$id';
-  static String getDownloadUrl(String id) => '$baseUrl/download/$id';
-
-  static Future<String?> getAudioUrl(String id) async {
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/stream/$id'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['url'];
       }
     } catch (e) {
       // ignore
@@ -55,9 +45,8 @@ class ApiService {
     if (playlistId == null) return [];
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/playlist/$playlistId'),
-      );
+      final response =
+          await http.get(Uri.parse('$baseUrl/playlist/$playlistId')).timeout(_timeout);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return (data['results'] as List)

@@ -1,12 +1,9 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 import '../models/song.dart';
 import '../services/storage_service.dart';
 import '../services/player_service.dart';
-import '../services/api_service.dart';
+import '../services/download_service.dart';
 import '../widgets/song_card.dart';
 import '../theme/app_colors.dart';
 
@@ -19,23 +16,11 @@ class DownloadsScreen extends StatefulWidget {
 
 class _DownloadsScreenState extends State<DownloadsScreen> {
   List<Song> _downloads = [];
-  List<Map<String, dynamic>> _activeDownloads = [];
-  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadDownloads();
-    _loadActiveDownloads();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      _loadActiveDownloads();
-    });
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
   }
 
   void _loadDownloads() {
@@ -44,30 +29,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     });
   }
 
-  Future<void> _loadActiveDownloads() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${ApiService.baseUrl}/downloads'),
-      );
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        final active = data
-            .where((d) => d['state'] == 'downloading')
-            .toList();
-        if (mounted) {
-          setState(() {
-            _activeDownloads = List<Map<String, dynamic>>.from(active);
-          });
-        }
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final playerService = context.watch<PlayerService>();
+    final downloadService = context.watch<DownloadService>();
+    final activeDownloads = downloadService.activeSongs;
     _downloads = StorageService.getDownloads();
 
     return Scaffold(
@@ -77,7 +43,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          if (_activeDownloads.isNotEmpty)
+          if (activeDownloads.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: AppColors.spacingM),
               child: Center(
@@ -91,7 +57,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     borderRadius: BorderRadius.circular(AppColors.radiusFull),
                   ),
                   child: Text(
-                    '${_activeDownloads.length} active',
+                    '${activeDownloads.length} active',
                     style: TextStyle(
                       fontSize: 12,
                       color: Theme.of(context).colorScheme.primary,
@@ -105,7 +71,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       ),
       body: Column(
         children: [
-          if (_activeDownloads.isNotEmpty) ...[
+          if (activeDownloads.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(AppColors.spacingM),
               decoration: BoxDecoration(
@@ -141,11 +107,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Downloading ${_activeDownloads.length} song(s)',
+                          'Downloading ${activeDownloads.length} song(s)',
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                         Text(
-                          'Saving to server...',
+                          'Saving to device...',
                           style: TextStyle(
                             fontSize: 12,
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -160,10 +126,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _activeDownloads.length,
+              itemCount: activeDownloads.length,
               itemBuilder: (context, index) {
-                final download = _activeDownloads[index];
-                final progress = (download['progress'] ?? 0) / 100.0;
+                final song = activeDownloads[index];
+                final progress = downloadService.getProgress(song.id);
                 return Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppColors.spacingM,
@@ -200,7 +166,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              download['filename'] ?? 'Unknown',
+                              song.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontWeight: FontWeight.w500),
@@ -224,7 +190,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             ),
           ],
           Expanded(
-            child: _downloads.isEmpty && _activeDownloads.isEmpty
+            child: _downloads.isEmpty && activeDownloads.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
