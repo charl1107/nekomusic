@@ -51,7 +51,6 @@ class DownloadService extends ChangeNotifier {
         _errorMessage = 'Downloads are not supported on web yet';
         _states[song.id] = DownloadState.idle;
         _progress[song.id] = 0.0;
-        notifyListeners();
         return;
       } else {
         final url = await _resolver.resolve(song.id);
@@ -59,7 +58,6 @@ class DownloadService extends ChangeNotifier {
           _errorMessage = 'Failed to get audio URL';
           _states[song.id] = DownloadState.idle;
           _progress[song.id] = 0.0;
-          notifyListeners();
           return;
         }
         audioUrl = url;
@@ -88,8 +86,8 @@ class DownloadService extends ChangeNotifier {
     } finally {
       _cancelTokens.remove(song.id);
       _activeSongs.remove(song.id);
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<void> cancelDownload(String songId) async {
