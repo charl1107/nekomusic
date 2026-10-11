@@ -9,5 +9,3 @@ services:
     envVars:
       - key: YOUTUBE_API_KEY
         sync: false
-      - key: YOUTUBE_COOKIES
-        sync: false
