@@ -8,5 +8,5 @@ import '../models/song.dart';
 /// reports that nothing was found.
 Future<List<Song>> searchRemote(String query) async => [];
 
-/// Web stub — playlist import is unsupported on the web; always empty.
+/// Web stub: playlist import is unsupported on the web; always empty.
 Future<List<Song>> importPlaylistRemote(String url) async => [];

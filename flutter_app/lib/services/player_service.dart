@@ -85,7 +85,7 @@ class PlayerService extends ChangeNotifier {
       StorageService.incrementPlayCount(song.id);
       notifyListeners();
     } catch (e) {
-      // Server failed - try local file as fallback (mobile only)
+      // Stream failed - try local file as fallback (mobile only)
       if (!kIsWeb) {
         await _tryPlayLocal(song);
       }
