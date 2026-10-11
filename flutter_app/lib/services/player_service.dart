@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/song.dart';
-import 'api_service.dart';
+import 'stream_resolver.dart';
 import 'storage_service.dart';
 import 'cipher_service.dart';
 
@@ -19,6 +19,7 @@ class PlayerService extends ChangeNotifier {
   bool _isPlaying = false;
   bool _shuffleMode = false;
   RepeatMode _repeatMode = RepeatMode.off;
+  final StreamResolver _resolver;
 
   AudioPlayer get player => _player;
   List<Song> get queue => List.unmodifiable(_queue);
@@ -40,7 +41,8 @@ class PlayerService extends ChangeNotifier {
   Stream<Duration?> get durationStream => _player.durationStream;
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
 
-  PlayerService() {
+  PlayerService({StreamResolver? resolver})
+      : _resolver = resolver ?? StreamResolver() {
     _loadSettings();
     _player.playerStateStream.listen((state) {
       _isPlaying = state.playing;
@@ -73,9 +75,9 @@ class PlayerService extends ChangeNotifier {
       if (played) return;
     }
 
-    // Stream from server
+    // Stream on-device; web: resolver stub returns null -> web playback disabled until IFrame phase
     try {
-      final audioUrl = await ApiService.getAudioUrl(song.id);
+      final audioUrl = await _resolver.resolve(song.id);
       if (audioUrl == null) return;
       await _player.setUrl(audioUrl);
       await _player.play();
