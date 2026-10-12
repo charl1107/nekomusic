@@ -69,14 +69,29 @@ Future<String?> resolveWithRetry(
   return null;
 }
 
-/// Cheap liveness check: requests the first 64 bytes of [url].
+/// Cheap liveness check: issues an open-ended ranged request for [url] and
+/// stops after the first 64 bytes.
+///
+/// The range must be open-ended (`bytes=0-`): the CDN answers 206 to small
+/// *bounded* ranges even for URLs it would refuse to actually stream, so a
+/// bounded probe cannot detect the 403 state.
 Future<bool> probeUrl(String url) async {
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
   try {
     final req = await client.getUrl(Uri.parse(url));
-    req.headers.set('range', 'bytes=0-63');
+    req.headers.set('range', 'bytes=0-');
     final resp = await req.close().timeout(const Duration(seconds: 15));
-    return resp.statusCode == 200 || resp.statusCode == 206;
+    if (resp.statusCode != 200 && resp.statusCode != 206) {
+      return false;
+    }
+    var bytes = 0;
+    await for (final chunk in resp) {
+      bytes += chunk.length;
+      if (bytes >= 64) {
+        break;
+      }
+    }
+    return true;
   } catch (_) {
     return false;
   } finally {
