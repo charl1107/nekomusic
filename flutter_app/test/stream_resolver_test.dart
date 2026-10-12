@@ -41,15 +41,18 @@ void main() {
   });
 
   group('resolveWithRetry', () {
-    // YouTube intermittently returns stream URLs that answer 403 at the CDN.
-    // The lookup must verify each URL and re-extract when it is dead.
-    test('returns the URL when the first probe succeeds', () async {
+    // YouTube intermittently returns stream URLs that answer 403 at the CDN,
+    // and stubs audio-only URLs more often than muxed ones. The lookup must
+    // verify candidate URLs in preference order and re-extract when all are
+    // dead.
+    test('returns the first candidate when the first probe succeeds',
+        () async {
       var extractions = 0;
 
       final result = await resolveWithRetry(
         (String videoId) async {
           extractions++;
-          return 'https://example.com/audio-1';
+          return ['https://example.com/audio-1', 'https://example.com/mux-1'];
         },
         (String url) async => true,
         'dQw4w9WgXcQ',
@@ -59,31 +62,37 @@ void main() {
       expect(extractions, 1);
     });
 
-    test('re-extracts when the probed URL is dead', () async {
+    test('falls through to the muxed candidate when audio is dead', () async {
+      final result = await resolveWithRetry(
+        (String videoId) async => [
+          'https://example.com/audio-dead',
+          'https://example.com/muxed-live',
+        ],
+        (String url) async => !url.endsWith('dead'),
+        'dQw4w9WgXcQ',
+      );
+
+      expect(result, 'https://example.com/muxed-live');
+    });
+
+    test('re-extracts when every candidate is dead', () async {
       var extractions = 0;
 
       final result = await resolveWithRetry(
         (String videoId) async {
           extractions++;
-          return 'https://example.com/audio-$extractions';
+          return [
+            'https://example.com/audio-$extractions',
+            'https://example.com/muxed-$extractions',
+          ];
         },
-        (String url) async => !url.endsWith('-1'),
-        'dQw4w9WgXcQ',
-      );
-
-      expect(result, 'https://example.com/audio-2');
-      expect(extractions, 2);
-    });
-
-    test('returns null when every probed URL is dead', () async {
-      final result = await resolveWithRetry(
-        (String videoId) async => 'https://example.com/audio-dead',
         (String url) async => false,
         'dQw4w9WgXcQ',
         maxAttempts: 3,
       );
 
       expect(result, isNull);
+      expect(extractions, 3);
     });
 
     test('does not probe when extraction yields no streams', () async {
