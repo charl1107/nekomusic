@@ -16,7 +16,9 @@ class PlayerService extends ChangeNotifier {
   /// media_kit (libmpv) engine: all network streaming and legacy .mp3 files.
   /// Its own HTTP stack (libcurl) bypasses ExoPlayer, which fails to load
   /// googlevideo streams on the target device.
-  final Player _mk = Player();
+  final Player _mk = Player(
+      configuration:
+          const PlayerConfiguration(logLevel: MPVLogLevel.info));
 
   /// just_audio engine: created lazily, used only for .ct encrypted files
   /// (RAM-only decrypt via [EncryptedAudioSource]). Never created on
@@ -26,6 +28,10 @@ class PlayerService extends ChangeNotifier {
 
   final _positionController = StreamController<Duration>.broadcast();
   final _durationController = StreamController<Duration?>.broadcast();
+
+  /// Rolling tail of mpv log lines: the real failure detail (HTTP status,
+  /// curl errors) is reported on the log stream, not the error stream.
+  final List<String> _mkLogTail = [];
 
   List<Song> _queue = [];
   int _currentIndex = -1;
@@ -93,16 +99,42 @@ class PlayerService extends ChangeNotifier {
       }
     });
     // media_kit reports load failures on this stream rather than throwing
-    // from open(); surface them with the same popup contract as thrown errors.
+    // from open(); surface them with the same popup contract as thrown errors,
+    // appended with mpv's last log lines so the on-device popup carries the
+    // real cause (e.g. "HTTP error 403", curl failures).
     _mk.stream.error.listen((msg) {
       debugPrint('[mk] error: $msg');
-      showGlobalSnack('Playback error: $msg');
+      // media_kit's message embeds the entire stream URL (hundreds of chars);
+      // the real cause is an earlier error-level log line. Abbreviate the
+      // message, then prefer error-level lines (URLs already stripped on
+      // capture) so the actual cause always fits in the popup.
+      final brief = msg.length > 60 ? '${msg.substring(0, 60)}…' : msg;
+      final errs = _mkLogTail.where((e) => e.startsWith('E|')).toList();
+      final chosen = errs.isNotEmpty ? errs : _mkLogTail;
+      var tail = chosen.length <= 4
+          ? chosen.join(' ~ ')
+          : chosen.skip(chosen.length - 4).join(' ~ ');
+      if (tail.length > 210) tail = '…${tail.substring(tail.length - 210)}';
+      final full = tail.isEmpty
+          ? 'Playback error: $brief'
+          : 'Playback error: $brief | mpv: $tail';
+      showGlobalSnack(full.length > 320 ? '${full.substring(0, 320)}…' : full);
       final s = currentSong;
       if (s != null && !_usesLocalPlayback) {
         _tryPlayLocal(s);
       }
     });
-    _mk.stream.log.listen((l) => debugPrint('[mk] ${l.text}'));
+    _mk.stream.log.listen((l) {
+      debugPrint('[mk] ${l.text}');
+      // Strip URLs: mpv's failure wrapper embeds the full stream URL and
+      // would swallow the whole popup window on its own.
+      final text = l.text.replaceAll(RegExp(r'https?://\S+'), '<url>');
+      // mpv reports level as either a single letter or a full word.
+      final lvl = l.level.trim().toLowerCase();
+      final isErr = lvl.startsWith('e') || lvl.startsWith('f');
+      _mkLogTail.add('${isErr ? 'E|' : '-|'}${l.prefix}: $text');
+      if (_mkLogTail.length > 12) _mkLogTail.removeAt(0);
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -137,6 +169,7 @@ class PlayerService extends ChangeNotifier {
         return;
       }
       debugPrint('[play] resolve OK for ${song.id}, loading into media_kit');
+      _mkLogTail.clear();
       _usesLocalPlayback = false;
       await _mk.open(Media(audioUrl), play: true);
       StorageService.addRecentPlay(song);
