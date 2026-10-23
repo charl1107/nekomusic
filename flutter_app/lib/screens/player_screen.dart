@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
+import '../models/song.dart';
 import '../services/player_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/add_to_playlist_dialog.dart';
 import 'queue_screen.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -356,42 +358,52 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  void _showOptions(BuildContext context, song) {
+  Future<void> _showOptions(BuildContext context, Song song) async {
     final playerService = context.read<PlayerService>();
 
-    showModalBottomSheet(
+    final action = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Icon(Icons.playlist_add),
               title: const Text('Add to playlist'),
-              onTap: () => Navigator.pop(context),
+              onTap: () => Navigator.pop(sheetContext, 'add_to_playlist'),
             ),
             ListTile(
               leading: Icon(
-                playerService.isFavorite(song.id) ? Icons.favorite : Icons.favorite_border,
-                color: playerService.isFavorite(song.id) ? AppColors.accentPink : null,
+                playerService.isFavorite(song.id)
+                    ? Icons.favorite
+                    : Icons.favorite_border,
+                color: playerService.isFavorite(song.id)
+                    ? AppColors.accentPink
+                    : null,
               ),
               title: Text(
-                playerService.isFavorite(song.id) ? 'Remove from favorites' : 'Add to favorites',
+                playerService.isFavorite(song.id)
+                    ? 'Remove from favorites'
+                    : 'Add to favorites',
               ),
               onTap: () {
                 playerService.toggleFavorite(song);
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
               },
             ),
             ListTile(
               leading: const Icon(Icons.share),
               title: const Text('Share'),
-              onTap: () => Navigator.pop(context),
+              onTap: () => Navigator.pop(sheetContext),
             ),
           ],
         ),
       ),
     );
+
+    if (action == 'add_to_playlist' && mounted) {
+      await showAddToPlaylistDialog(this.context, song);
+    }
   }
 
   String _formatDuration(Duration duration) {

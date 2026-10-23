@@ -18,7 +18,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void initState() {
     super.initState();
+    StorageService.playlistsRevision.addListener(_loadPlaylists);
     _loadPlaylists();
+  }
+
+  @override
+  void dispose() {
+    StorageService.playlistsRevision.removeListener(_loadPlaylists);
+    super.dispose();
   }
 
   void _loadPlaylists() {

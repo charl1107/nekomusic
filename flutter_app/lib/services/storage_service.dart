@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/song.dart';
 import '../models/playlist.dart';
 
 class StorageService {
+  static final ValueNotifier<int> playlistsRevision = ValueNotifier<int>(0);
+
   static late Box _settingsBox;
   static late Box _playlistsBox;
   static late Box _recentsBox;
@@ -42,6 +45,7 @@ class StorageService {
   static Future<void> savePlaylists(List<Playlist> playlists) async {
     final data = playlists.map((p) => p.toJson()).toList();
     await _playlistsBox.put('playlists', json.encode(data));
+    playlistsRevision.value++;
   }
 
   static Future<void> addPlaylist(Playlist playlist) async {
