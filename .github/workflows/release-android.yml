@@ -1,6 +1,11 @@
 name: Android Release
 
+# Publishes a release on every push to the default branch, and on demand
+# (workflow_dispatch) with a selectable version increment.
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       bump:
@@ -12,6 +17,12 @@ on:
           - patch
           - minor
           - major
+
+# One release at a time; queued, never cancelled, so two pushes in quick
+# succession bump the version sequentially instead of racing on the tag.
+concurrency:
+  group: android-release
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -72,7 +83,9 @@ jobs:
       - name: Increment app version
         id: version
         env:
-          BUMP: ${{ inputs.bump }}
+          # inputs.bump only exists for workflow_dispatch; on push this
+          # defaults to a patch bump.
+          BUMP: ${{ inputs.bump || 'patch' }}
         run: |
           set -euo pipefail
           current=$(sed -n 's/^version:[[:space:]]*//p' flutter_app/pubspec.yaml | head -n 1)
