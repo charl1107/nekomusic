@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Streaming and downloads. Debug builds get this via Flutter's debug
+         manifest; release builds must declare it here. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="nekomusic"
         android:name="${applicationName}"
