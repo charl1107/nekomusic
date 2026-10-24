@@ -18,7 +18,7 @@ class AppTheme {
     cardTheme: CardThemeData(
       elevation: 0,
       color: AppColors.surfaceLight,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusL)),
       ),
       shadowColor: Colors.black.withValues(alpha: 0.1),
@@ -50,7 +50,7 @@ class AppTheme {
     cardTheme: CardThemeData(
       elevation: 0,
       color: AppColors.surfaceDark,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusL)),
       ),
       shadowColor: Colors.black.withValues(alpha: 0.3),

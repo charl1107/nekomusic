@@ -79,7 +79,9 @@ class SettingsScreen extends StatelessWidget {
             return RadioListTile<String>(
               title: Text(quality),
               value: quality,
+              // ignore: deprecated_member_use
               groupValue: playerService.audioQuality,
+              // ignore: deprecated_member_use
               onChanged: (value) {
                 if (value != null) {
                   playerService.setAudioQuality(value);

@@ -181,6 +181,7 @@ class _SongCardState extends State<SongCard>
     final downloadService = context.watch<DownloadService>();
     final isDownloading = downloadService.isDownloading(widget.song.id);
     final isDownloaded = downloadService.getState(widget.song.id) == DownloadState.downloaded;
+    // ignore: unused_local_variable
     final isLocalFile = widget.song.localPath != null;
 
     return MouseRegion(
@@ -310,6 +311,7 @@ class _SongCardState extends State<SongCard>
     final downloadService = context.read<DownloadService>();
     final isDownloaded =
         downloadService.getState(widget.song.id) == DownloadState.downloaded;
+    final isLocalFile = widget.song.localPath != null;
 
     final action = await showModalBottomSheet<String>(
       context: context,
