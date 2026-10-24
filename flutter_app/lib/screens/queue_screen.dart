@@ -19,7 +19,7 @@ class QueueScreen extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.clear_all),
               onPressed: () {
-                playerService.stop();
+                playerService.clearQueue();
               },
             ),
         ],
@@ -35,9 +35,7 @@ class QueueScreen extends StatelessWidget {
           : ReorderableListView.builder(
               padding: const EdgeInsets.all(8),
               itemCount: queue.length,
-              onReorderItem: (oldIndex, newIndex) {
-                // Handle reorder
-              },
+              onReorderItem: playerService.reorderQueue,
               itemBuilder: (context, index) {
                 final song = queue[index];
                 return SongCard(

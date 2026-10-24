@@ -181,6 +181,7 @@ class _SongCardState extends State<SongCard>
     final downloadService = context.watch<DownloadService>();
     final isDownloading = downloadService.isDownloading(widget.song.id);
     final isDownloaded = downloadService.getState(widget.song.id) == DownloadState.downloaded;
+    final isLocalFile = widget.song.localPath != null;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -317,6 +318,23 @@ class _SongCardState extends State<SongCard>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.queue_music),
+              title: const Text('Add to queue'),
+              onTap: () {
+                final added = context.read<PlayerService>().addToQueue(widget.song);
+                Navigator.pop(sheetContext);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(added
+                          ? 'Added "${widget.song.title}" to the queue.'
+                          : 'That song is already in the queue.'),
+                    ),
+                  );
+                }
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.playlist_add),
               title: const Text('Add to playlist'),
               onTap: () => Navigator.pop(sheetContext, 'add_to_playlist'),
@@ -333,11 +351,13 @@ class _SongCardState extends State<SongCard>
                 Navigator.pop(sheetContext);
               },
             ),
-            if (isDownloaded)
+            if (isDownloaded || isLocalFile)
               ListTile(
                 leading: const Icon(Icons.file_download_outlined),
-                title: const Text('Save to device (MP3)'),
-                subtitle: const Text('Export unencrypted MP3 to Downloads folder'),
+                title: Text(isLocalFile ? 'Copy to Downloads' : 'Save to device (MP3)'),
+                subtitle: Text(isLocalFile
+                    ? 'Copy original audio file to Downloads folder'
+                    : 'Export unencrypted MP3 to Downloads folder'),
                 onTap: () async {
                   Navigator.pop(sheetContext);
                   final path = await downloadService.saveToDevice(widget.song);

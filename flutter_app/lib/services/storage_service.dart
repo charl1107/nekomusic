@@ -6,6 +6,7 @@ import '../models/playlist.dart';
 
 class StorageService {
   static final ValueNotifier<int> playlistsRevision = ValueNotifier<int>(0);
+  static const String localMusicPlaylistId = 'local-music';
 
   static late Box _settingsBox;
   static late Box _playlistsBox;
@@ -52,6 +53,38 @@ class StorageService {
     final playlists = getPlaylists();
     playlists.add(playlist);
     await savePlaylists(playlists);
+  }
+
+  static Future<int> addLocalSongs(List<Song> songs) async {
+    final playlists = getPlaylists();
+    final index = playlists.indexWhere(
+      (playlist) => playlist.id == localMusicPlaylistId,
+    );
+    final currentPlaylist = index == -1
+        ? Playlist(id: localMusicPlaylistId, name: 'Local Music')
+        : playlists[index];
+    final knownPaths = <String>{
+      for (final song in currentPlaylist.songs)
+        if (song.localSourcePath != null) song.localSourcePath!
+        else if (song.localPath != null) song.localPath!,
+    };
+    final additions = <Song>[];
+    for (final song in songs) {
+      final path = song.localSourcePath ?? song.localPath;
+      if (path != null && knownPaths.add(path)) additions.add(song);
+    }
+    if (additions.isEmpty) return 0;
+
+    final updatedPlaylist = currentPlaylist.copyWith(
+      songs: [...currentPlaylist.songs, ...additions],
+    );
+    if (index == -1) {
+      playlists.add(updatedPlaylist);
+    } else {
+      playlists[index] = updatedPlaylist;
+    }
+    await savePlaylists(playlists);
+    return additions.length;
   }
 
   static Future<void> deletePlaylist(String id) async {

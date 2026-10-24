@@ -97,21 +97,36 @@ Future<String> saveToDeviceFile(Song song) async {
     Directory? dir = await getDownloadsDirectory();
     if (dir == null && Platform.isAndroid) {
       final fallback = Directory('/storage/emulated/0/Download');
-      if (await fallback.exists()) {
-        dir = fallback;
-      }
+      if (await fallback.exists()) dir = fallback;
     }
     if (dir == null) throw Exception('Downloads directory not found on device');
+    await dir.create(recursive: true);
 
     final sanitizedTitle = song.title.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-    final targetPath = '${dir.path}/$sanitizedTitle.mp3';
+    if (song.localPath != null) {
+      final sourceFile = File(song.localPath!);
+      if (!await sourceFile.exists()) throw Exception('Local audio file not found');
+      final sourceName = sourceFile.uri.pathSegments.last;
+      final dot = sourceName.lastIndexOf('.');
+      final rawExtension = dot < 0 ? '' : sourceName.substring(dot).toLowerCase();
+      final extension = RegExp(r'^\.[a-z0-9]{1,8}$').hasMatch(rawExtension)
+          ? rawExtension
+          : '.audio';
+      var targetPath = '${dir.path}/$sanitizedTitle$extension';
+      var suffix = 2;
+      while (await File(targetPath).exists()) {
+        targetPath = '${dir.path}/$sanitizedTitle ($suffix)$extension';
+        suffix++;
+      }
+      return (await sourceFile.copy(targetPath)).path;
+    }
 
+    final targetPath = '${dir.path}/$sanitizedTitle.mp3';
     final appDocDir = await getApplicationDocumentsDirectory();
     final encryptedFile = File('${appDocDir.path}/${song.id}.ct');
     final legacyFile = File('${appDocDir.path}/${song.id}.mp3');
 
     if (await encryptedFile.exists()) {
-      // Decrypt .ct on-the-fly and write clean .mp3 to public Downloads
       final targetFile = File(targetPath);
       final sink = targetFile.openWrite();
       var offset = 0;

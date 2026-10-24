@@ -120,7 +120,7 @@ class PlayerService extends ChangeNotifier {
           : 'Playback error: $brief | mpv: $tail';
       showGlobalSnack(full.length > 320 ? '${full.substring(0, 320)}…' : full);
       final s = currentSong;
-      if (s != null && !_usesLocalPlayback) {
+      if (s != null && s.localPath == null && !_usesLocalPlayback) {
         _tryPlayLocal(s);
       }
     });
@@ -153,7 +153,24 @@ class PlayerService extends ChangeNotifier {
       _currentIndex = index;
     }
 
-    // Mobile: try local file first (offline playback)
+    if (song.localPath != null) {
+      if (kIsWeb) {
+        showGlobalSnack('Local audio playback is not supported on web yet');
+        return;
+      }
+      final played = await _tryPlayLocal(song);
+      if (played) return;
+
+      await _mk.stop();
+      await _justAudio?.stop();
+      _usesLocalPlayback = false;
+      _isPlaying = false;
+      showGlobalSnack('Local audio file not found. It may have been moved or deleted.');
+      notifyListeners();
+      return;
+    }
+
+    // Try an app-managed offline copy before resolving a YouTube stream.
     if (!kIsWeb) {
       final played = await _tryPlayLocal(song);
       if (played) return;
@@ -191,6 +208,44 @@ class PlayerService extends ChangeNotifier {
     if (_queue.isNotEmpty) {
       await play(_queue[_currentIndex]);
     }
+  }
+
+  bool addToQueue(Song song) {
+    if (_queue.any((queuedSong) => queuedSong.id == song.id)) return false;
+    _queue.add(song);
+    notifyListeners();
+    return true;
+  }
+
+  void reorderQueue(int oldIndex, int newIndex) {
+    if (oldIndex < 0 ||
+        oldIndex >= _queue.length ||
+        newIndex < 0 ||
+        newIndex >= _queue.length ||
+        oldIndex == newIndex) {
+      return;
+    }
+
+    final song = _queue.removeAt(oldIndex);
+    _queue.insert(newIndex, song);
+    if (_currentIndex == oldIndex) {
+      _currentIndex = newIndex;
+    } else if (oldIndex < _currentIndex && newIndex >= _currentIndex) {
+      _currentIndex--;
+    } else if (oldIndex > _currentIndex && newIndex <= _currentIndex) {
+      _currentIndex++;
+    }
+    notifyListeners();
+  }
+
+  Future<void> clearQueue() async {
+    await _mk.stop();
+    await _justAudio?.stop();
+    _usesLocalPlayback = false;
+    _isPlaying = false;
+    _queue.clear();
+    _currentIndex = -1;
+    notifyListeners();
   }
 
   Future<void> playNext() async {
@@ -313,6 +368,19 @@ class PlayerService extends ChangeNotifier {
   Future<bool> _tryPlayLocal(Song song) async {
     if (kIsWeb) return false;
     try {
+      if (song.localPath != null) {
+        final importedFile = File(song.localPath!);
+        if (!await importedFile.exists()) return false;
+
+        _mkLogTail.clear();
+        _usesLocalPlayback = false;
+        await _mk.open(Media(importedFile.path), play: true);
+        StorageService.addRecentPlay(song);
+        StorageService.incrementPlayCount(song.id);
+        notifyListeners();
+        return true;
+      }
+
       final dir = await getApplicationDocumentsDirectory();
       final encryptedFile = File('${dir.path}/${song.id}.ct');
       if (await encryptedFile.exists()) {

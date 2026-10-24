@@ -52,14 +52,29 @@ Future<String> saveToDeviceFile(Song song) async {
   try {
     final dir = await getDownloadsDirectory();
     if (dir == null) throw Exception('Downloads directory not found');
-
+    await dir.create(recursive: true);
     final sanitizedTitle = song.title.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-    final filePath = '${dir.path}/$sanitizedTitle.mp3';
-    final sourceFile = File('${(await getApplicationDocumentsDirectory()).path}/${song.id}.mp3');
 
+    if (song.localPath != null) {
+      final source = File(song.localPath!);
+      if (!await source.exists()) throw Exception('Local audio file not found');
+      final name = source.uri.pathSegments.last;
+      final dot = name.lastIndexOf('.');
+      final extension = dot < 0 ? '.audio' : name.substring(dot).toLowerCase();
+      var targetPath = '${dir.path}/$sanitizedTitle$extension';
+      var suffix = 2;
+      while (await File(targetPath).exists()) {
+        targetPath = '${dir.path}/$sanitizedTitle ($suffix)$extension';
+        suffix++;
+      }
+      return (await source.copy(targetPath)).path;
+    }
+
+    final targetPath = '${dir.path}/$sanitizedTitle.mp3';
+    final sourceFile = File('${(await getApplicationDocumentsDirectory()).path}/${song.id}.mp3');
     if (await sourceFile.exists()) {
-      await sourceFile.copy(filePath);
-      return filePath;
+      await sourceFile.copy(targetPath);
+      return targetPath;
     }
     throw Exception('Downloaded file not found');
   } catch (e) {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/playlist.dart';
 import '../services/discovery_service.dart';
+import '../services/local_music_service.dart';
+import '../services/library_export_service.dart';
 import '../services/storage_service.dart';
 import 'playlist_detail_screen.dart';
 
@@ -92,6 +94,54 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (confirm == true) {
       await StorageService.deletePlaylist(id);
       _loadPlaylists();
+    }
+  }
+
+  Future<void> _importLocalMusic() async {
+    try {
+      final songs = await LocalMusicService.pickAudioSongs();
+      if (!mounted || songs == null) return;
+      if (songs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No supported audio files were selected.')),
+        );
+        return;
+      }
+
+      final addedCount = await StorageService.addLocalSongs(songs);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(addedCount == 0
+              ? 'Those files are already in Local Music.'
+              : 'Imported $addedCount songs into Local Music.'),
+        ),
+      );
+    } on UnsupportedError {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Local audio import is not supported on web yet.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not import the selected audio files.')),
+      );
+    }
+  }
+
+  Future<void> _exportLibrary() async {
+    try {
+      final exported = await LibraryExportService.exportAndShare(context);
+      if (!mounted || !exported) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Library export is ready to share.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not export the library.')),
+      );
     }
   }
 
@@ -262,6 +312,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
         title: const Text('Library'),
         actions: [
           IconButton(
+            tooltip: 'Import local audio',
+            icon: const Icon(Icons.audio_file),
+            onPressed: _importLocalMusic,
+          ),
+          IconButton(
+            tooltip: 'Export library',
+            icon: const Icon(Icons.ios_share),
+            onPressed: _exportLibrary,
+          ),
+          IconButton(
+            tooltip: 'Import YouTube playlist',
             icon: const Icon(Icons.link),
             onPressed: _importFromYouTube,
           ),
