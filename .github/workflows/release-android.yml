@@ -1,0 +1,119 @@
+name: Android Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version increment for this release
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require the default branch
+        env:
+          EXPECTED_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [[ "$GITHUB_REF_NAME" != "$EXPECTED_BRANCH" ]]; then
+            echo "Run releases from the default branch ($EXPECTED_BRANCH)."
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          cache-dependency-path: flutter_app/pubspec.lock
+
+      - name: Increment app version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          current=$(sed -n 's/^version:[[:space:]]*//p' flutter_app/pubspec.yaml | head -n 1)
+          version=${current%%+*}
+          build=${current##*+}
+          if [[ "$version" == "$current" ]]; then build=0; fi
+          IFS='.' read -r major minor patch <<< "$version"
+          [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ && "$patch" =~ ^[0-9]+$ && "$build" =~ ^[0-9]+$ ]]
+          case "$BUMP" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+            *) echo "Unsupported version increment: $BUMP"; exit 1 ;;
+          esac
+          build=$((build + 1))
+          next="$major.$minor.$patch"
+          tag="v$next"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "Tag $tag already exists. Fetch the latest default branch and retry."
+            exit 1
+          fi
+          sed -i "s/^version:.*/version: $next+$build/" flutter_app/pubspec.yaml
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Analyze and test
+        working-directory: flutter_app
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build release APK
+        working-directory: flutter_app
+        run: flutter build apk --release
+
+      - name: Commit version and create tag
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/pubspec.yaml flutter_app/pubspec.lock
+          git commit -m "chore: release ${RELEASE_TAG}"
+          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+          git push origin "HEAD:${GITHUB_REF_NAME}" "$RELEASE_TAG"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build }}
+        run: |
+          asset="nekomusic-${RELEASE_TAG}-android.apk"
+          cp flutter_app/build/app/outputs/flutter-apk/app-release.apk "$asset"
+          gh release create "$RELEASE_TAG" "$asset" \
+            --title "NekoMusic ${RELEASE_TAG}" \
+            --generate-notes
+          echo "Published NekoMusic ${RELEASE_VERSION}+${BUILD_NUMBER}"

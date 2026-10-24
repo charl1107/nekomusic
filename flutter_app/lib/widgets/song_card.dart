@@ -5,6 +5,7 @@ import '../models/song.dart';
 import '../services/download_service.dart';
 import '../services/player_service.dart';
 import '../theme/app_colors.dart';
+import 'add_to_playlist_dialog.dart';
 
 class SongCard extends StatefulWidget {
   final Song song;
@@ -180,6 +181,7 @@ class _SongCardState extends State<SongCard>
     final downloadService = context.watch<DownloadService>();
     final isDownloading = downloadService.isDownloading(widget.song.id);
     final isDownloaded = downloadService.getState(widget.song.id) == DownloadState.downloaded;
+    final isLocalFile = widget.song.localPath != null;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -304,20 +306,38 @@ class _SongCardState extends State<SongCard>
     );
   }
 
-  void _showOptions(BuildContext context) {
+  Future<void> _showOptions(BuildContext context) async {
     final downloadService = context.read<DownloadService>();
-    final isDownloaded = downloadService.getState(widget.song.id) == DownloadState.downloaded;
+    final isDownloaded =
+        downloadService.getState(widget.song.id) == DownloadState.downloaded;
 
-    showModalBottomSheet(
+    final action = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.queue_music),
+              title: const Text('Add to queue'),
+              onTap: () {
+                final added = context.read<PlayerService>().addToQueue(widget.song);
+                Navigator.pop(sheetContext);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(added
+                          ? 'Added "${widget.song.title}" to the queue.'
+                          : 'That song is already in the queue.'),
+                    ),
+                  );
+                }
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.playlist_add),
               title: const Text('Add to playlist'),
-              onTap: () => Navigator.pop(context),
+              onTap: () => Navigator.pop(sheetContext, 'add_to_playlist'),
             ),
             ListTile(
               leading: Icon(
@@ -328,16 +348,18 @@ class _SongCardState extends State<SongCard>
               title: const Text('Add to favorites'),
               onTap: () {
                 context.read<PlayerService>().toggleFavorite(widget.song);
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
               },
             ),
-            if (isDownloaded)
+            if (isDownloaded || isLocalFile)
               ListTile(
                 leading: const Icon(Icons.file_download_outlined),
-                title: const Text('Save to device (MP3)'),
-                subtitle: const Text('Export unencrypted MP3 to Downloads folder'),
+                title: Text(isLocalFile ? 'Copy to Downloads' : 'Save to device (MP3)'),
+                subtitle: Text(isLocalFile
+                    ? 'Copy original audio file to Downloads folder'
+                    : 'Export unencrypted MP3 to Downloads folder'),
                 onTap: () async {
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext);
                   final path = await downloadService.saveToDevice(widget.song);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -354,13 +376,18 @@ class _SongCardState extends State<SongCard>
             ListTile(
               leading: const Icon(Icons.share),
               title: const Text('Share'),
-              onTap: () => Navigator.pop(context),
+              onTap: () => Navigator.pop(sheetContext),
             ),
           ],
         ),
       ),
     );
+
+    if (action == 'add_to_playlist' && mounted) {
+      await showAddToPlaylistDialog(this.context, widget.song);
+    }
   }
+
 }
 
 class _FavoriteButton extends StatefulWidget {

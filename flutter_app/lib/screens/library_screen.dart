@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/playlist.dart';
 import '../services/discovery_service.dart';
+import '../services/local_music_service.dart';
+import '../services/library_export_service.dart';
 import '../services/storage_service.dart';
 import 'playlist_detail_screen.dart';
 
@@ -18,7 +20,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void initState() {
     super.initState();
+    StorageService.playlistsRevision.addListener(_loadPlaylists);
     _loadPlaylists();
+  }
+
+  @override
+  void dispose() {
+    StorageService.playlistsRevision.removeListener(_loadPlaylists);
+    super.dispose();
   }
 
   void _loadPlaylists() {
@@ -88,6 +97,54 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
+  Future<void> _importLocalMusic() async {
+    try {
+      final songs = await LocalMusicService.pickAudioSongs();
+      if (!mounted || songs == null) return;
+      if (songs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No supported audio files were selected.')),
+        );
+        return;
+      }
+
+      final addedCount = await StorageService.addLocalSongs(songs);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(addedCount == 0
+              ? 'Those files are already in Local Music.'
+              : 'Imported $addedCount songs into Local Music.'),
+        ),
+      );
+    } on UnsupportedError {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Local audio import is not supported on web yet.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not import the selected audio files.')),
+      );
+    }
+  }
+
+  Future<void> _exportLibrary() async {
+    try {
+      final exported = await LibraryExportService.exportAndShare(context);
+      if (!mounted || !exported) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Library export is ready to share.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not export the library.')),
+      );
+    }
+  }
+
   Future<void> _importFromYouTube() async {
     final controller = TextEditingController();
     final result = await showDialog<String>(
@@ -114,39 +171,138 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ),
     );
 
-    if (result != null && result.isNotEmpty) {
-      final songs = await DiscoveryService.importPlaylist(result);
-      if (songs.isNotEmpty && mounted) {
-        final nameController = TextEditingController(text: 'Imported Playlist');
-        final name = await showDialog<String>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Playlist Name'),
-            content: TextField(controller: nameController),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, nameController.text),
-                child: const Text('Create'),
-              ),
-            ],
-          ),
-        );
+    if (result == null || result.trim().isEmpty) return;
 
-        if (name != null && name.isNotEmpty) {
-          final playlist = Playlist(
-            id: const Uuid().v4(),
-            name: name,
-            songs: songs,
-          );
-          await StorageService.addPlaylist(playlist);
-          _loadPlaylists();
-        }
-      }
+    final songs = await DiscoveryService.importPlaylist(result.trim());
+    if (!mounted) return;
+
+    if (songs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No songs imported. Check the URL and try again.')),
+      );
+      return;
     }
+
+    final existingPlaylists = StorageService.getPlaylists();
+    final destination = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import playlist'),
+        content: Text('Found ${songs.length} songs. Where should they go?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'new'),
+            child: const Text('Create new'),
+          ),
+          if (existingPlaylists.isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'existing'),
+              child: const Text('Add to existing'),
+            ),
+        ],
+      ),
+    );
+
+    if (!mounted || destination == null) return;
+
+    if (destination == 'existing') {
+      final selectedPlaylistId = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Choose a playlist'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 320,
+            child: ListView.builder(
+              itemCount: existingPlaylists.length,
+              itemBuilder: (context, index) {
+                final playlist = existingPlaylists[index];
+                return ListTile(
+                  title: Text(playlist.name),
+                  subtitle: Text('${playlist.songs.length} songs'),
+                  onTap: () => Navigator.pop(context, playlist.id),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+
+      if (!mounted || selectedPlaylistId == null) return;
+
+      final playlists = StorageService.getPlaylists();
+      final playlistIndex =
+          playlists.indexWhere((playlist) => playlist.id == selectedPlaylistId);
+      if (playlistIndex == -1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('That playlist is no longer available.')),
+        );
+        return;
+      }
+
+      final playlist = playlists[playlistIndex];
+      final songIds = playlist.songs.map((song) => song.id).toSet();
+      final newSongs = songs.where((song) => songIds.add(song.id)).toList();
+      if (newSongs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All imported songs are already in that playlist.')),
+        );
+        return;
+      }
+
+      playlists[playlistIndex] =
+          playlist.copyWith(songs: [...playlist.songs, ...newSongs]);
+      await StorageService.savePlaylists(playlists);
+      if (!mounted) return;
+
+      _loadPlaylists();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added ${newSongs.length} songs to "${playlist.name}".'),
+        ),
+      );
+      return;
+    }
+
+    final nameController = TextEditingController(text: 'Imported Playlist');
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Playlist Name'),
+        content: TextField(controller: nameController),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, nameController.text),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    if (name == null || name.trim().isEmpty) return;
+
+    final playlist = Playlist(
+      id: const Uuid().v4(),
+      name: name.trim(),
+      songs: songs,
+    );
+    await StorageService.addPlaylist(playlist);
+    if (!mounted) return;
+    _loadPlaylists();
   }
 
   @override
@@ -156,6 +312,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
         title: const Text('Library'),
         actions: [
           IconButton(
+            tooltip: 'Import local audio',
+            icon: const Icon(Icons.audio_file),
+            onPressed: _importLocalMusic,
+          ),
+          IconButton(
+            tooltip: 'Export library',
+            icon: const Icon(Icons.ios_share),
+            onPressed: _exportLibrary,
+          ),
+          IconButton(
+            tooltip: 'Import YouTube playlist',
             icon: const Icon(Icons.link),
             onPressed: _importFromYouTube,
           ),

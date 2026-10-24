@@ -5,6 +5,8 @@ class Song {
   final String? album;
   final String? thumbnail;
   final String? duration;
+  final String? localPath;
+  final String? localSourcePath;
 
   Song({
     required this.id,
@@ -13,6 +15,8 @@ class Song {
     this.album,
     this.thumbnail,
     this.duration,
+    this.localPath,
+    this.localSourcePath,
   });
 
   factory Song.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class Song {
       album: json['album'],
       thumbnail: json['thumbnail'],
       duration: json['duration'],
+      localPath: json['localPath'] as String?,
+      localSourcePath: json['localSourcePath'] as String?,
     );
   }
 
@@ -34,6 +40,8 @@ class Song {
       'album': album,
       'thumbnail': thumbnail,
       'duration': duration,
+      'localPath': localPath,
+      'localSourcePath': localSourcePath,
     };
   }
 }
