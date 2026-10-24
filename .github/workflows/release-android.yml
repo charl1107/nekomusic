@@ -60,12 +60,13 @@ jobs:
           : "${STORE_PASSWORD:?Missing ANDROID_STORE_PASSWORD repository secret}"
           : "${KEY_PASSWORD:?Missing ANDROID_KEY_PASSWORD repository secret}"
           : "${KEY_ALIAS:?Missing ANDROID_KEY_ALIAS repository secret}"
-          echo "$KEYSTORE_BASE64" | base64 -d > flutter_app/android/app/upload-keystore.jks
+          echo "$KEYSTORE_BASE64" | base64 -d > flutter_app/android/app/upload-keystore.p12
           {
             echo "storePassword=$STORE_PASSWORD"
             echo "keyPassword=$KEY_PASSWORD"
             echo "keyAlias=$KEY_ALIAS"
-            echo "storeFile=upload-keystore.jks"
+            echo "storeFile=upload-keystore.p12"
+            echo "storeType=PKCS12"
           } > flutter_app/android/key.properties
 
       - name: Increment app version

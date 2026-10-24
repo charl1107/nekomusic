@@ -52,6 +52,10 @@ android {
                 keyPassword = keystoreProperties.getProperty("keyPassword")
                 storePassword = keystoreProperties.getProperty("storePassword")
                 storeFile = releaseStoreFile
+                // The keystore is PKCS12 (the modern standard). Stated
+                // explicitly so signing never depends on the JDK default.
+                storeType = keystoreProperties.getProperty("storeType")?.takeIf { it.isNotBlank() }
+                    ?: "PKCS12"
             }
         }
     }
